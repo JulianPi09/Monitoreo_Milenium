@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clipping de Medios — Milenium Group</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600&family=Noto+Serif:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <img src="/logo/Logo%20Horizontal.%20Negativo.png" alt="Milenium Group" class="header-logo" />
+    <span class="header-tag">Clipping de Medios</span>
+  </header>
+
+  <main class="app-main">
+
+    <!-- PASO 1: PEGAR TALKWALKER -->
+    <section class="card" id="step-rss">
+      <div class="step-label">Paso 1</div>
+      <h2 class="section-title">Pegar contenido TalkWalker</h2>
+      <p class="section-desc">Exportá las menciones desde TalkWalker en formato CSV. Podés subir el archivo directamente o pegar el contenido manualmente.</p>
+
+      <div class="report-header-grid">
+        <div class="field-group">
+          <label for="report-client">Cliente</label>
+          <input type="text" id="report-client" placeholder="Ej: Makro, Burger King, Manpower" />
+        </div>
+        <div class="field-group">
+          <label for="report-date">Fecha del reporte</label>
+          <input type="date" id="report-date" />
+        </div>
+      </div>
+      <div class="title-preview-wrap">
+        <div class="title-preview-label">Título del reporte</div>
+        <div class="title-preview" id="title-preview">Clipping de Medios</div>
+      </div>
+
+      <div class="field-group">
+        <label>Contenido CSV de TalkWalker</label>
+
+        <!-- Subir archivo (recomendado: evita problemas de codificación) -->
+        <input type="file" id="csv-file-input" accept=".csv,.txt" style="display:none" />
+        <div class="csv-upload-zone" id="csv-upload-zone">
+          <span class="upload-icon">↑</span>
+          <span class="upload-label">Subir archivo CSV</span>
+          <span class="upload-hint">Hacé clic para seleccionar · o arrastrá el archivo acá</span>
+        </div>
+        <div class="csv-file-name hidden" id="csv-file-name"></div>
+
+        <div class="input-divider"><span>o pegá el contenido manualmente</span></div>
+
+        <textarea id="tw-input" placeholder="Pegá aquí el CSV exportado de TalkWalker...&#10;&#10;La primera fila debe contener los encabezados:&#10;title, extra_source_attributes.name, published, content_snippet, url, sentiment, reach, engagement" rows="8"></textarea>
+      </div>
+
+      <button class="btn btn-primary" id="btn-parse">Parsear CSV</button>
+    </section>
+
+    <!-- PASO 2: MENCIONES -->
+    <section class="card hidden" id="step-mentions">
+      <div class="step-label">Paso 2</div>
+      <h2 class="section-title">Clasificar menciones</h2>
+      <p class="section-desc">Revisá cada mención y asignale un sentimiento. Podés eliminar las que no quieras incluir en el reporte.</p>
+
+      <div class="mentions-toolbar">
+        <div class="mentions-count" id="mentions-count">0 menciones encontradas</div>
+        <div class="bulk-actions">
+          <button class="btn btn-sm" onclick="setAllSentiment('positive')">Todas positivas</button>
+          <button class="btn btn-sm" onclick="setAllSentiment('neutral')">Todas neutrales</button>
+          <button class="btn btn-sm" onclick="setAllSentiment('negative')">Todas negativas</button>
+        </div>
+      </div>
+
+      <div id="mentions-list"></div>
+
+      <button class="btn btn-primary" id="btn-continue" style="margin-top:16px;">Continuar al envío →</button>
+    </section>
+
+    <!-- PASO 3: CONFIGURAR Y ENVIAR -->
+    <section class="card hidden" id="step-send">
+      <div class="step-label">Paso 3</div>
+      <h2 class="section-title">Configurar y enviar</h2>
+
+      <!-- Asunto -->
+      <div class="field-group">
+        <label for="email-subject">Asunto del email</label>
+        <input type="text" id="email-subject" placeholder="[Clipping de Medios] Cliente · fecha" />
+      </div>
+
+      <!-- Destinatarios -->
+      <div class="field-group">
+        <label for="recipients">Destinatarios <span class="hint">separados por coma</span></label>
+        <input type="text" id="recipients" placeholder="email1@ejemplo.com, email2@ejemplo.com" />
+      </div>
+
+      <!-- Config SMTP -->
+      <div class="smtp-section">
+        <button class="smtp-toggle" id="smtp-toggle" onclick="toggleSmtp()">
+          <span>⚙ Configuración SMTP</span>
+          <span class="toggle-arrow" id="toggle-arrow">▼</span>
+        </button>
+        <div class="smtp-fields hidden" id="smtp-fields">
+          <p class="smtp-hint">Necesitás un servidor SMTP para enviar los emails. Si usás Gmail, activá "Contraseñas de aplicación" en tu cuenta Google.</p>
+          <div class="smtp-grid">
+            <div class="field-group">
+              <label for="smtp-host">Servidor SMTP</label>
+              <input type="text" id="smtp-host" placeholder="smtp.gmail.com" />
+            </div>
+            <div class="field-group">
+              <label for="smtp-port">Puerto</label>
+              <input type="number" id="smtp-port" placeholder="587" value="587" />
+            </div>
+            <div class="field-group">
+              <label for="smtp-user">Email remitente</label>
+              <input type="email" id="smtp-user" placeholder="tu@email.com" />
+            </div>
+            <div class="field-group">
+              <label for="smtp-pass">Contraseña / App password</label>
+              <input type="password" id="smtp-pass" placeholder="••••••••••••" />
+            </div>
+          </div>
+          <button class="btn btn-sm" onclick="saveSmtpConfig()">Guardar configuración</button>
+          <span class="save-confirm hidden" id="smtp-saved">✓ Guardado</span>
+        </div>
+      </div>
+
+      <!-- Programar -->
+      <div class="field-group" style="margin-top:20px;">
+        <label for="schedule-at">
+          <input type="checkbox" id="schedule-checkbox" onchange="toggleSchedule()" />
+          Programar envío para después
+        </label>
+        <input type="datetime-local" id="schedule-at" class="hidden" style="margin-top:8px;" />
+      </div>
+
+      <!-- Acciones -->
+      <div class="send-actions">
+        <button class="btn btn-secondary" onclick="previewEmail()">Vista previa del email</button>
+        <button class="btn btn-outline" id="btn-pdf" onclick="downloadPDF()">Descargar PDF</button>
+        <button class="btn btn-primary" id="btn-send" onclick="sendClipping()">Enviar clipping</button>
+      </div>
+
+      <div id="send-status" class="send-status hidden"></div>
+    </section>
+
+  </main>
+
+  <!-- MODAL PREVIEW -->
+  <div id="preview-modal" class="modal hidden">
+    <div class="modal-overlay" onclick="closePreview()"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <span>Vista previa del email</span>
+        <button class="modal-close" onclick="closePreview()">✕</button>
+      </div>
+      <iframe id="preview-frame" class="preview-frame"></iframe>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
