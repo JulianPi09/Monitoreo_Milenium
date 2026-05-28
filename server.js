@@ -87,7 +87,7 @@ function buildEmailHTML(mentions, title) {
     const color = sentimentColor(m.sentiment);
     const label = sentimentLabel(m.sentiment);
     const badgeBg = color;
-    const noteTypeLbl = noteTypeLabel(m.noteType);
+    const noteTypeLbl = m.noteType ? noteTypeLabel(m.noteType) : null;
     const date = m.date ? `<p style="margin:0 0 6px 0;font-size:12px;color:#888888;font-family:'Inter',sans-serif;">${m.date}</p>` : '';
     const source = m.source ? `<p style="margin:0 0 4px 0;font-size:12px;font-weight:600;color:#FF0B2E;font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">${m.source}</p>` : '';
     const desc = m.description ? `<p style="margin:8px 0 0 0;font-size:14px;color:#333333;font-family:'Inter',sans-serif;line-height:1.5;">${m.description}</p>` : '';
@@ -129,8 +129,8 @@ function buildEmailHTML(mentions, title) {
                   ${link}
                 </td>
                 <td style="width:100px;text-align:right;vertical-align:top;padding-left:12px;">
-                  <span style="display:inline-block;background-color:${badgeBg};color:#000000;font-size:11px;font-weight:700;font-family:'Inter',sans-serif;padding:3px 8px;border-radius:3px;white-space:nowrap;">${label}</span><br>
-                  <span style="display:inline-block;margin-top:4px;background-color:#333333;color:#FFFFFF;font-size:10px;font-weight:700;font-family:'Inter',sans-serif;padding:3px 8px;border-radius:3px;white-space:nowrap;">${noteTypeLbl}</span>
+                  <span style="display:inline-block;background-color:${badgeBg};color:#000000;font-size:11px;font-weight:700;font-family:'Inter',sans-serif;padding:3px 8px;border-radius:3px;white-space:nowrap;">${label}</span>
+                  ${noteTypeLbl ? `<br><span style="display:inline-block;margin-top:4px;background-color:#333333;color:#FFFFFF;font-size:10px;font-weight:700;font-family:'Inter',sans-serif;padding:3px 8px;border-radius:3px;white-space:nowrap;">${noteTypeLbl}</span>` : ''}
                 </td>
               </tr>
             </table>
@@ -177,11 +177,11 @@ function buildEmailHTML(mentions, title) {
           <td style="padding:20px 40px 8px 40px;">
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
-                <td align="center" style="padding:12px;background:#F9F9F9;border-radius:4px;">
+                <td rowspan="3" align="center" valign="middle" style="padding:12px;background:#F9F9F9;border-radius:4px;vertical-align:middle;width:22%;">
                   <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#000000;font-family:'Oswald',sans-serif;">${mentions.length}</p>
                   <p style="margin:0;font-size:11px;color:#888888;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">Menciones totales</p>
                 </td>
-                <td width="12"></td>
+                <td rowspan="3" width="12"></td>
                 <td align="center" style="padding:12px;background:#F9F9F9;border-radius:4px;">
                   <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#1EF455;font-family:'Oswald',sans-serif;">${mentions.filter(m => m.sentiment === 'positive').length}</p>
                   <p style="margin:0;font-size:11px;color:#888888;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">Positivas</p>
@@ -195,6 +195,25 @@ function buildEmailHTML(mentions, title) {
                 <td align="center" style="padding:12px;background:#F9F9F9;border-radius:4px;">
                   <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#FF0B2E;font-family:'Oswald',sans-serif;">${mentions.filter(m => m.sentiment === 'negative').length}</p>
                   <p style="margin:0;font-size:11px;color:#888888;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">Negativas</p>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="5" height="10"></td>
+              </tr>
+              <tr>
+                <td align="center" style="padding:12px;background:#F9F9F9;border-radius:4px;">
+                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#000000;font-family:'Oswald',sans-serif;">${mentions.filter(m => !m.noteType || m.noteType === 'espontanea').length}</p>
+                  <p style="margin:0;font-size:11px;color:#888888;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">Espontáneas</p>
+                </td>
+                <td width="12"></td>
+                <td align="center" style="padding:12px;background:#F9F9F9;border-radius:4px;">
+                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#000000;font-family:'Oswald',sans-serif;">${mentions.filter(m => m.noteType === 'proactiva').length}</p>
+                  <p style="margin:0;font-size:11px;color:#888888;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">Proactivas</p>
+                </td>
+                <td width="12"></td>
+                <td align="center" style="padding:12px;background:#F9F9F9;border-radius:4px;">
+                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#000000;font-family:'Oswald',sans-serif;">${mentions.filter(m => m.noteType === 'reactiva').length}</p>
+                  <p style="margin:0;font-size:11px;color:#888888;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">Reactivas</p>
                 </td>
               </tr>
             </table>
