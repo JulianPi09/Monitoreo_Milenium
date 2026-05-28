@@ -26,7 +26,7 @@ function getLogoBase64() {
 function sentimentColor(sentiment) {
   if (sentiment === 'positive') return '#1EF455';
   if (sentiment === 'negative') return '#FF0B2E';
-  return '#888888';
+  return '#F5A623';
 }
 
 function sentimentLabel(sentiment) {

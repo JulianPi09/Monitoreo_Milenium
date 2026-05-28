@@ -413,7 +413,7 @@ textarea {
 
 .mention-card[data-sentiment="positive"] .mention-border { background: #1EF455; }
 .mention-card[data-sentiment="negative"] .mention-border { background: #FF0B2E; }
-.mention-card[data-sentiment="neutral"] .mention-border { background: #888888; }
+.mention-card[data-sentiment="neutral"] .mention-border { background: #F5A623; }
 
 .mention-body {
   flex: 1;
