@@ -188,7 +188,7 @@ function buildEmailHTML(mentions, title) {
                 </td>
                 <td width="12"></td>
                 <td align="center" style="padding:12px;background:#F9F9F9;border-radius:4px;">
-                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#888888;font-family:'Oswald',sans-serif;">${mentions.filter(m => m.sentiment === 'neutral').length}</p>
+                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#F5A623;font-family:'Oswald',sans-serif;">${mentions.filter(m => m.sentiment === 'neutral').length}</p>
                   <p style="margin:0;font-size:11px;color:#888888;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">Neutrales</p>
                 </td>
                 <td width="12"></td>
