@@ -70,8 +70,9 @@
         <div class="toolbar-row toolbar-row-top">
           <div class="mentions-count" id="mentions-count">0 menciones encontradas</div>
           <div class="toolbar-row-btns">
-            <button class="btn btn-sm" onclick="selectAll()">Seleccionar todas</button>
-            <button class="btn btn-sm" onclick="selectPage()">Seleccionar página</button>
+            <button class="btn btn-sm btn-select-all" onclick="selectAll()">Seleccionar todas</button>
+            <button class="btn btn-sm btn-select-page" onclick="selectPage()">Seleccionar página</button>
+            <button class="btn btn-sm btn-filter" id="btn-filter" onclick="toggleFilterPanel()">Filtrar</button>
           </div>
         </div>
         <div class="toolbar-row">
@@ -89,6 +90,30 @@
             <button class="btn btn-sm" onclick="confirmSetAllNoteType('proactiva')">Todas proactivas</button>
             <button class="btn btn-sm" onclick="confirmSetAllNoteType('reactiva')">Todas reactivas</button>
           </div>
+        </div>
+      </div>
+
+      <!-- PANEL DE FILTROS -->
+      <div class="filter-panel hidden" id="filter-panel">
+        <div class="filter-panel-row">
+          <span class="filter-panel-label">Sentimiento</span>
+          <div class="filter-panel-btns">
+            <button class="btn btn-sm filter-toggle-btn" id="filt-positive" onclick="toggleFilterSentiment('positive')">Positiva</button>
+            <button class="btn btn-sm filter-toggle-btn" id="filt-neutral" onclick="toggleFilterSentiment('neutral')">Neutral</button>
+            <button class="btn btn-sm filter-toggle-btn" id="filt-negative" onclick="toggleFilterSentiment('negative')">Negativa</button>
+          </div>
+        </div>
+        <div class="filter-panel-row">
+          <span class="filter-panel-label">Tipo de nota</span>
+          <div class="filter-panel-btns">
+            <button class="btn btn-sm filter-toggle-btn" id="filt-espontanea" onclick="toggleFilterNoteType('espontanea')">Espontánea</button>
+            <button class="btn btn-sm filter-toggle-btn" id="filt-proactiva" onclick="toggleFilterNoteType('proactiva')">Proactiva</button>
+            <button class="btn btn-sm filter-toggle-btn" id="filt-reactiva" onclick="toggleFilterNoteType('reactiva')">Reactiva</button>
+          </div>
+        </div>
+        <div class="filter-panel-actions">
+          <button class="btn btn-sm filter-apply-btn" onclick="applyFilter()">Aplicar filtro</button>
+          <button class="btn btn-sm filter-clear-btn" onclick="clearFilter()">Limpiar filtro</button>
         </div>
       </div>
 

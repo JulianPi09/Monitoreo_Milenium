@@ -4,6 +4,8 @@ let selectedMentions = new Set();
 let currentPage = 1;
 const PAGE_SIZE = 15;
 let _confirmCallback = null;
+let filterSentiments = new Set();
+let filterNoteTypes = new Set();
 
 // ===== TÍTULO AUTOMÁTICO =====
 
@@ -197,6 +199,14 @@ function runCSVParse(rawText) {
   mentions = parsed;
   selectedMentions.clear();
   currentPage = 1;
+  filterSentiments.clear();
+  filterNoteTypes.clear();
+  ['positive', 'neutral', 'negative', 'espontanea', 'proactiva', 'reactiva'].forEach(v => {
+    const el = document.getElementById(`filt-${v}`);
+    if (el) el.classList.remove('filter-active');
+  });
+  const filterPanel = document.getElementById('filter-panel');
+  if (filterPanel) filterPanel.classList.add('hidden');
   renderMentions();
   document.getElementById('step-mentions').classList.remove('hidden');
   document.getElementById('step-mentions').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -269,34 +279,90 @@ function parseTWDate(str) {
   return formatDate(d);
 }
 
+// ===== FILTROS =====
+
+function getDisplayMentions() {
+  if (filterSentiments.size === 0 && filterNoteTypes.size === 0) return mentions;
+  return mentions.filter(m => {
+    const sentOk = filterSentiments.size === 0 || filterSentiments.has(m.sentiment);
+    const noteOk = filterNoteTypes.size === 0 || filterNoteTypes.has(m.noteType || 'espontanea');
+    return sentOk && noteOk;
+  });
+}
+
+function toggleFilterPanel() {
+  document.getElementById('filter-panel').classList.toggle('hidden');
+}
+
+function toggleFilterSentiment(value) {
+  if (filterSentiments.has(value)) filterSentiments.delete(value);
+  else filterSentiments.add(value);
+  document.getElementById(`filt-${value}`).classList.toggle('filter-active', filterSentiments.has(value));
+}
+
+function toggleFilterNoteType(value) {
+  if (filterNoteTypes.has(value)) filterNoteTypes.delete(value);
+  else filterNoteTypes.add(value);
+  document.getElementById(`filt-${value}`).classList.toggle('filter-active', filterNoteTypes.has(value));
+}
+
+function applyFilter() {
+  currentPage = 1;
+  renderMentions();
+  document.getElementById('filter-panel').classList.add('hidden');
+}
+
+function clearFilter() {
+  filterSentiments.clear();
+  filterNoteTypes.clear();
+  ['positive', 'neutral', 'negative'].forEach(v =>
+    document.getElementById(`filt-${v}`).classList.remove('filter-active')
+  );
+  ['espontanea', 'proactiva', 'reactiva'].forEach(v =>
+    document.getElementById(`filt-${v}`).classList.remove('filter-active')
+  );
+  currentPage = 1;
+  renderMentions();
+  document.getElementById('filter-panel').classList.add('hidden');
+}
+
 // ===== RENDERIZADO DE MENCIONES =====
 
 function totalPages() {
-  return Math.max(1, Math.ceil(mentions.length / PAGE_SIZE));
+  return Math.max(1, Math.ceil(getDisplayMentions().length / PAGE_SIZE));
 }
 
 function renderMentions() {
   const list = document.getElementById('mentions-list');
   const count = document.getElementById('mentions-count');
 
-  const total = mentions.length;
+  const display = getDisplayMentions();
+  const total = display.length;
+  const filterOn = filterSentiments.size > 0 || filterNoteTypes.size > 0;
   const pages = totalPages();
   if (currentPage > pages) currentPage = pages;
 
   const start = (currentPage - 1) * PAGE_SIZE;
   const end   = Math.min(start + PAGE_SIZE, total);
-  const pageMentions = mentions.slice(start, end);
+  const pageMentions = display.slice(start, end);
 
   if (total === 0) {
-    count.textContent = '0 menciones encontradas';
+    count.textContent = filterOn
+      ? `0 menciones · Filtro activo (${mentions.length} en total)`
+      : '0 menciones encontradas';
   } else if (total <= PAGE_SIZE) {
-    count.textContent = `${total} mención${total !== 1 ? 'es' : ''} encontrada${total !== 1 ? 's' : ''}`;
+    const base = `${total} mención${total !== 1 ? 'es' : ''} encontrada${total !== 1 ? 's' : ''}`;
+    count.textContent = filterOn ? `${base} · Filtro activo` : base;
   } else {
-    count.textContent = `${total} menciones encontradas · Mostrando ${start + 1}–${end}`;
+    count.textContent = filterOn
+      ? `${total} de ${mentions.length} menciones · Mostrando ${start + 1}–${end}`
+      : `${total} menciones encontradas · Mostrando ${start + 1}–${end}`;
   }
 
   if (total === 0) {
-    list.innerHTML = '<p style="color:#888;font-size:14px;text-align:center;padding:32px 0;">No hay menciones. Podés volver a parsear el CSV.</p>';
+    list.innerHTML = filterOn
+      ? '<p style="color:#888;font-size:14px;text-align:center;padding:32px 0;">No hay menciones que coincidan con el filtro activo.</p>'
+      : '<p style="color:#888;font-size:14px;text-align:center;padding:32px 0;">No hay menciones. Podés volver a parsear el CSV.</p>';
     updateBulkBar();
     renderPagination();
     return;
