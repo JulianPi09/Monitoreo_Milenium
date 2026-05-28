@@ -35,6 +35,12 @@ function sentimentLabel(sentiment) {
   return 'Neutral';
 }
 
+function noteTypeLabel(noteType) {
+  if (noteType === 'proactiva') return 'Proactiva';
+  if (noteType === 'reactiva') return 'Reactiva';
+  return 'Espontánea';
+}
+
 // Genera un Buffer PDF a partir de HTML usando Puppeteer/Chromium
 async function buildPDF(html) {
   const browser = await puppeteer.launch({
@@ -81,6 +87,7 @@ function buildEmailHTML(mentions, title) {
     const color = sentimentColor(m.sentiment);
     const label = sentimentLabel(m.sentiment);
     const badgeBg = color;
+    const noteTypeLbl = noteTypeLabel(m.noteType);
     const date = m.date ? `<p style="margin:0 0 6px 0;font-size:12px;color:#888888;font-family:'Inter',sans-serif;">${m.date}</p>` : '';
     const source = m.source ? `<p style="margin:0 0 4px 0;font-size:12px;font-weight:600;color:#FF0B2E;font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">${m.source}</p>` : '';
     const desc = m.description ? `<p style="margin:8px 0 0 0;font-size:14px;color:#333333;font-family:'Inter',sans-serif;line-height:1.5;">${m.description}</p>` : '';
@@ -121,8 +128,9 @@ function buildEmailHTML(mentions, title) {
                   ${stats}
                   ${link}
                 </td>
-                <td style="width:80px;text-align:right;vertical-align:top;padding-left:12px;">
-                  <span style="display:inline-block;background-color:${badgeBg};color:#000000;font-size:11px;font-weight:700;font-family:'Inter',sans-serif;padding:3px 8px;border-radius:3px;white-space:nowrap;">${label}</span>
+                <td style="width:100px;text-align:right;vertical-align:top;padding-left:12px;">
+                  <span style="display:inline-block;background-color:${badgeBg};color:#000000;font-size:11px;font-weight:700;font-family:'Inter',sans-serif;padding:3px 8px;border-radius:3px;white-space:nowrap;">${label}</span><br>
+                  <span style="display:inline-block;margin-top:4px;background-color:#333333;color:#FFFFFF;font-size:10px;font-weight:700;font-family:'Inter',sans-serif;padding:3px 8px;border-radius:3px;white-space:nowrap;">${noteTypeLbl}</span>
                 </td>
               </tr>
             </table>

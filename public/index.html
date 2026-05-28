@@ -67,15 +67,59 @@
       <p class="section-desc">Revisá cada mención y asignale un sentimiento. Podés eliminar las que no quieras incluir en el reporte.</p>
 
       <div class="mentions-toolbar">
-        <div class="mentions-count" id="mentions-count">0 menciones encontradas</div>
-        <div class="bulk-actions">
-          <button class="btn btn-sm" onclick="setAllSentiment('positive')">Todas positivas</button>
-          <button class="btn btn-sm" onclick="setAllSentiment('neutral')">Todas neutrales</button>
-          <button class="btn btn-sm" onclick="setAllSentiment('negative')">Todas negativas</button>
+        <div class="toolbar-row toolbar-row-top">
+          <div class="mentions-count" id="mentions-count">0 menciones encontradas</div>
+          <div class="toolbar-row-btns">
+            <button class="btn btn-sm" onclick="selectAll()">Seleccionar todas</button>
+            <button class="btn btn-sm" onclick="selectPage()">Seleccionar página</button>
+          </div>
+        </div>
+        <div class="toolbar-row">
+          <span class="toolbar-row-label">Sentimiento</span>
+          <div class="toolbar-row-btns">
+            <button class="btn btn-sm" onclick="confirmSetAllSentiment('positive')">Todas positivas</button>
+            <button class="btn btn-sm" onclick="confirmSetAllSentiment('neutral')">Todas neutrales</button>
+            <button class="btn btn-sm" onclick="confirmSetAllSentiment('negative')">Todas negativas</button>
+          </div>
+        </div>
+        <div class="toolbar-row">
+          <span class="toolbar-row-label">Tipo de nota</span>
+          <div class="toolbar-row-btns">
+            <button class="btn btn-sm" onclick="confirmSetAllNoteType('espontanea')">Todas espontáneas</button>
+            <button class="btn btn-sm" onclick="confirmSetAllNoteType('proactiva')">Todas proactivas</button>
+            <button class="btn btn-sm" onclick="confirmSetAllNoteType('reactiva')">Todas reactivas</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- BARRA DE ACCIONES MASIVAS -->
+      <div class="bulk-bar hidden" id="bulk-bar">
+        <div class="bulk-bar-header">
+          <span class="bulk-count" id="bulk-count">0 seleccionadas</span>
+          <button class="btn btn-sm btn-deselect" onclick="deselectAll()">✕ Deseleccionar</button>
+        </div>
+        <div class="bulk-bar-body">
+          <div class="bulk-bar-row">
+            <span class="bulk-bar-label">Sentimiento</span>
+            <div class="bulk-bar-row-btns">
+              <button class="btn btn-sm" onclick="confirmBulkSetSentiment('positive')">Positiva</button>
+              <button class="btn btn-sm" onclick="confirmBulkSetSentiment('neutral')">Neutral</button>
+              <button class="btn btn-sm" onclick="confirmBulkSetSentiment('negative')">Negativa</button>
+            </div>
+          </div>
+          <div class="bulk-bar-row">
+            <span class="bulk-bar-label">Tipo de nota</span>
+            <div class="bulk-bar-row-btns">
+              <button class="btn btn-sm" onclick="confirmBulkSetNoteType('espontanea')">Espontánea</button>
+              <button class="btn btn-sm" onclick="confirmBulkSetNoteType('proactiva')">Proactiva</button>
+              <button class="btn btn-sm" onclick="confirmBulkSetNoteType('reactiva')">Reactiva</button>
+            </div>
+          </div>
         </div>
       </div>
 
       <div id="mentions-list"></div>
+      <div id="pagination"></div>
 
       <button class="btn btn-primary" id="btn-continue" style="margin-top:16px;">Continuar al envío →</button>
     </section>
@@ -158,6 +202,18 @@
         <button class="modal-close" onclick="closePreview()">✕</button>
       </div>
       <iframe id="preview-frame" class="preview-frame"></iframe>
+    </div>
+  </div>
+
+  <!-- DIÁLOGO DE CONFIRMACIÓN -->
+  <div id="confirm-dialog" class="confirm-overlay hidden">
+    <div class="confirm-overlay-bg" onclick="closeConfirm()"></div>
+    <div class="confirm-box">
+      <p class="confirm-msg" id="confirm-msg">¿Confirmar acción?</p>
+      <div class="confirm-actions">
+        <button class="btn btn-primary" onclick="confirmAction()">Confirmar</button>
+        <button class="btn btn-outline" onclick="closeConfirm()">Cancelar</button>
+      </div>
     </div>
   </div>
 

@@ -1,5 +1,9 @@
 // Estado de la aplicación
 let mentions = [];
+let selectedMentions = new Set();
+let currentPage = 1;
+const PAGE_SIZE = 15;
+let _confirmCallback = null;
 
 // ===== TÍTULO AUTOMÁTICO =====
 
@@ -173,6 +177,7 @@ function runCSVParse(rawText) {
           description: get(row, iSnippet),
           link:        get(row, iUrl),
           sentiment,
+          noteType:    'espontanea',
           reach:       (!isNaN(reach) && reach !== null)           ? reach      : null,
           engagement:  (!isNaN(engagement) && engagement !== null) ? engagement : null,
         };
@@ -190,6 +195,8 @@ function runCSVParse(rawText) {
   }
 
   mentions = parsed;
+  selectedMentions.clear();
+  currentPage = 1;
   renderMentions();
   document.getElementById('step-mentions').classList.remove('hidden');
   document.getElementById('step-mentions').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -264,26 +271,52 @@ function parseTWDate(str) {
 
 // ===== RENDERIZADO DE MENCIONES =====
 
+function totalPages() {
+  return Math.max(1, Math.ceil(mentions.length / PAGE_SIZE));
+}
+
 function renderMentions() {
   const list = document.getElementById('mentions-list');
   const count = document.getElementById('mentions-count');
 
-  count.textContent = `${mentions.length} mención${mentions.length !== 1 ? 'es' : ''} encontrada${mentions.length !== 1 ? 's' : ''}`;
+  const total = mentions.length;
+  const pages = totalPages();
+  if (currentPage > pages) currentPage = pages;
 
-  if (mentions.length === 0) {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const end   = Math.min(start + PAGE_SIZE, total);
+  const pageMentions = mentions.slice(start, end);
+
+  if (total === 0) {
+    count.textContent = '0 menciones encontradas';
+  } else if (total <= PAGE_SIZE) {
+    count.textContent = `${total} mención${total !== 1 ? 'es' : ''} encontrada${total !== 1 ? 's' : ''}`;
+  } else {
+    count.textContent = `${total} menciones encontradas · Mostrando ${start + 1}–${end}`;
+  }
+
+  if (total === 0) {
     list.innerHTML = '<p style="color:#888;font-size:14px;text-align:center;padding:32px 0;">No hay menciones. Podés volver a parsear el CSV.</p>';
+    updateBulkBar();
+    renderPagination();
     return;
   }
 
-  list.innerHTML = mentions.map(m => {
+  list.innerHTML = pageMentions.map(m => {
     const statsHtml = (m.reach != null || m.engagement != null) ? `
       <div class="mention-stats">
         ${m.reach != null ? `<span class="mention-stat"><span class="stat-label">Alcance</span> ${formatNumber(m.reach)}</span>` : ''}
         ${m.engagement != null ? `<span class="mention-stat"><span class="stat-label">Interacciones</span> ${formatNumber(m.engagement)}</span>` : ''}
       </div>` : '';
 
+    const isSelected = selectedMentions.has(m.id);
+    const noteType = m.noteType || 'espontanea';
+
     return `
-    <div class="mention-card" data-sentiment="${m.sentiment}" data-id="${m.id}">
+    <div class="mention-card${isSelected ? ' selected' : ''}" data-sentiment="${m.sentiment}" data-id="${m.id}">
+      <div class="mention-check-col">
+        <input type="checkbox" class="mention-checkbox" onchange="toggleMentionSelect('${m.id}')" ${isSelected ? 'checked' : ''}>
+      </div>
       <div class="mention-border"></div>
       <div class="mention-body">
         <div class="mention-meta">
@@ -301,10 +334,49 @@ function renderMentions() {
           <option value="positive" ${m.sentiment === 'positive' ? 'selected' : ''}>Positiva</option>
           <option value="negative" ${m.sentiment === 'negative' ? 'selected' : ''}>Negativa</option>
         </select>
+        <select class="notetype-select" onchange="setNoteType('${m.id}', this.value)">
+          <option value="espontanea" ${noteType === 'espontanea' ? 'selected' : ''}>Espontánea</option>
+          <option value="proactiva" ${noteType === 'proactiva' ? 'selected' : ''}>Proactiva</option>
+          <option value="reactiva" ${noteType === 'reactiva' ? 'selected' : ''}>Reactiva</option>
+        </select>
         <button class="btn-delete" onclick="deleteMention('${m.id}')" title="Eliminar mención">✕</button>
       </div>
     </div>`;
   }).join('');
+
+  updateBulkBar();
+  renderPagination();
+}
+
+function renderPagination() {
+  const container = document.getElementById('pagination');
+  const pages = totalPages();
+
+  if (pages <= 1) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const prev = currentPage > 1;
+  const next = currentPage < pages;
+
+  let nums = '';
+  for (let i = 1; i <= pages; i++) {
+    nums += `<button class="btn btn-sm page-btn${i === currentPage ? ' page-btn-active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+  }
+
+  container.innerHTML = `
+    <div class="pagination">
+      <button class="btn btn-sm page-btn" onclick="goToPage(${currentPage - 1})" ${prev ? '' : 'disabled'}>← Anterior</button>
+      ${nums}
+      <button class="btn btn-sm page-btn" onclick="goToPage(${currentPage + 1})" ${next ? '' : 'disabled'}>Siguiente →</button>
+    </div>`;
+}
+
+function goToPage(n) {
+  currentPage = Math.max(1, Math.min(n, totalPages()));
+  renderMentions();
+  document.getElementById('step-mentions').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function setSentiment(id, value) {
@@ -323,6 +395,112 @@ function setAllSentiment(value) {
 
 function deleteMention(id) {
   mentions = mentions.filter(m => m.id !== id);
+  selectedMentions.delete(id);
+  renderMentions();
+}
+
+function setNoteType(id, value) {
+  const m = mentions.find(x => x.id === id);
+  if (m) m.noteType = value;
+}
+
+function setAllNoteType(value) {
+  mentions.forEach(m => m.noteType = value);
+  renderMentions();
+}
+
+function toggleMentionSelect(id) {
+  if (selectedMentions.has(id)) {
+    selectedMentions.delete(id);
+  } else {
+    selectedMentions.add(id);
+  }
+  const card = document.querySelector(`[data-id="${id}"]`);
+  if (card) card.classList.toggle('selected', selectedMentions.has(id));
+  updateBulkBar();
+}
+
+function selectAll() {
+  mentions.forEach(m => selectedMentions.add(m.id));
+  renderMentions();
+}
+
+function selectPage() {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  mentions.slice(start, start + PAGE_SIZE).forEach(m => selectedMentions.add(m.id));
+  renderMentions();
+}
+
+function deselectAll() {
+  selectedMentions.clear();
+  renderMentions();
+}
+
+// ===== CONFIRMACIÓN =====
+
+function showConfirm(message, callback) {
+  _confirmCallback = callback;
+  document.getElementById('confirm-msg').textContent = message;
+  document.getElementById('confirm-dialog').classList.remove('hidden');
+}
+
+function confirmAction() {
+  const cb = _confirmCallback;
+  closeConfirm();
+  if (cb) cb();
+}
+
+function closeConfirm() {
+  document.getElementById('confirm-dialog').classList.add('hidden');
+  _confirmCallback = null;
+}
+
+function confirmSetAllSentiment(value) {
+  const labels = { positive: 'Positiva', neutral: 'Neutral', negative: 'Negativa' };
+  showConfirm(`¿Marcar las ${mentions.length} menciones como "${labels[value]}"?`, () => setAllSentiment(value));
+}
+
+function confirmSetAllNoteType(value) {
+  const labels = { espontanea: 'Espontánea', proactiva: 'Proactiva', reactiva: 'Reactiva' };
+  showConfirm(`¿Marcar las ${mentions.length} menciones como "${labels[value]}"?`, () => setAllNoteType(value));
+}
+
+function confirmBulkSetSentiment(value) {
+  const labels = { positive: 'Positiva', neutral: 'Neutral', negative: 'Negativa' };
+  const n = selectedMentions.size;
+  showConfirm(`¿Marcar las ${n} menciones seleccionadas como "${labels[value]}"?`, () => bulkSetSentiment(value));
+}
+
+function confirmBulkSetNoteType(value) {
+  const labels = { espontanea: 'Espontánea', proactiva: 'Proactiva', reactiva: 'Reactiva' };
+  const n = selectedMentions.size;
+  showConfirm(`¿Marcar las ${n} menciones seleccionadas como "${labels[value]}"?`, () => bulkSetNoteType(value));
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  const n = selectedMentions.size;
+  if (n === 0) {
+    bar.classList.add('hidden');
+  } else {
+    bar.classList.remove('hidden');
+    document.getElementById('bulk-count').textContent = `${n} seleccionada${n !== 1 ? 's' : ''}`;
+  }
+}
+
+function bulkSetSentiment(value) {
+  selectedMentions.forEach(id => {
+    const m = mentions.find(x => x.id === id);
+    if (m) m.sentiment = value;
+  });
+  renderMentions();
+}
+
+function bulkSetNoteType(value) {
+  selectedMentions.forEach(id => {
+    const m = mentions.find(x => x.id === id);
+    if (m) m.noteType = value;
+  });
   renderMentions();
 }
 
