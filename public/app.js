@@ -800,12 +800,12 @@ function escapeHTML(str) {
 // ===== NAVEGACIÓN DE PANTALLAS =====
 
 function showScreen(screen) {
-  ['report', 'brand-config', 'mailing', 'history'].forEach(s => {
+  ['report', 'brand-config', 'mailing', 'export', 'history'].forEach(s => {
     const el = document.getElementById(`screen-${s}`);
     if (el) el.classList.toggle('hidden', s !== screen);
   });
 
-  ['brand-config', 'mailing', 'history'].forEach(s => {
+  ['brand-config', 'mailing', 'export', 'history'].forEach(s => {
     const el = document.getElementById(`nav-${s}`);
     if (el) el.classList.toggle('active', s === screen);
   });
@@ -841,12 +841,58 @@ function updateScreenTitles() {
   const screens = {
     'history-title':      'Historial de reportes',
     'brand-config-title': 'Configuración de marca',
-    'mailing-title':      'Listas de correo'
+    'mailing-title':      'Listas de correo',
+    'export-title':       'Exportar datos'
   };
   Object.entries(screens).forEach(([id, base]) => {
     const el = document.getElementById(id);
     if (el) el.textContent = base + suffix;
   });
+
+  // Ajuste 1: autocompletar campo Cliente del Paso 1
+  const clientEl = document.getElementById('report-client');
+  if (clientEl) {
+    clientEl.value = brandName;
+    updateTitlePreview();
+  }
+}
+
+function exportToExcel() {
+  if (!mentions || mentions.length === 0) {
+    alert('No hay datos cargados. Primero procesá un CSV en el Paso 1.');
+    return;
+  }
+
+  const countryEl = document.getElementById('sidebar-country');
+  const countryName = countryEl ? (countryEl.options[countryEl.selectedIndex]?.text || '') : '';
+
+  const sentLabel = s => s === 'positive' ? 'Positiva' : s === 'negative' ? 'Negativa' : 'Neutral';
+  const noteLabel = n => n === 'proactiva' ? 'Proactiva' : n === 'reactiva' ? 'Reactiva' : 'Espontánea';
+
+  const rows = mentions.map(m => ({
+    'Fecha':         m.date        || '',
+    'Título':        m.title       || '',
+    'Link':          m.link        || '',
+    'Medio':         m.source      || '',
+    'País':          countryName,
+    'Sentimiento':   sentLabel(m.sentiment),
+    'Tipo de nota':  noteLabel(m.noteType),
+    'Vocero':        '',
+    'Visibilidad':   '',
+    'Alcance':       m.reach       ?? '',
+    'Interacciones': m.engagement  ?? ''
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Menciones');
+
+  const brandEl = document.getElementById('sidebar-brand');
+  const brandName = brandEl ? (brandEl.options[brandEl.selectedIndex]?.text || '') : '';
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const filename = `Clipping_${brandName}_${countryName}_${dateStr}.xlsx`.replace(/\s+/g, '_');
+
+  XLSX.writeFile(wb, filename);
 }
 
 function saveConfigSection(confirmId) {

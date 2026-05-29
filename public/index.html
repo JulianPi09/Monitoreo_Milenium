@@ -41,6 +41,10 @@
         <span class="sidebar-icon">✉</span>
         <span>Lista de correos</span>
       </button>
+      <button class="sidebar-nav-item" id="nav-export" onclick="showScreen('export')">
+        <span class="sidebar-icon">↓</span>
+        <span>Exportar datos</span>
+      </button>
       <button class="sidebar-nav-item" id="nav-history" onclick="showScreen('history')">
         <span class="sidebar-icon">🕐</span>
         <span>Historial de reportes</span>
@@ -50,6 +54,7 @@
       <button class="sidebar-new-report active" id="nav-report" onclick="showScreen('report')">
         + Nuevo reporte
       </button>
+      <button class="sidebar-ri-btn" onclick="alert('Esta función estará disponible en la plataforma completa.')">Volver a Reputation Intelligence</button>
     </div>
   </aside>
 
@@ -59,6 +64,7 @@
     <!-- HEADER -->
     <header class="app-header">
       <span class="header-tag">Monitoreo de Medios</span>
+      <button class="btn-logout" onclick="alert('Funcionalidad disponible en la versión con login.')">⎋ Cerrar sesión</button>
     </header>
 
     <!-- SCREEN: FLUJO DE REPORTE (default) -->
@@ -318,6 +324,24 @@
           <button class="btn btn-primary" onclick="saveConfigSection('cfg-save-3')">Guardar</button>
           <span class="config-save-confirm" id="cfg-save-3">✓ Guardado</span>
         </div>
+
+        <!-- Sección 5: AVE -->
+        <h3 class="config-section-title">Valor publicitario (AVE)</h3>
+        <p class="field-hint" style="margin-bottom:14px;">Si TalkWalker no provee el valor publicitario automáticamente, la app puede calcularlo usando esta fórmula: Alcance × Tarifa CPM × Multiplicador editorial.</p>
+        <div class="field-group">
+          <label for="cfg-cpm">Tarifa CPM</label>
+          <input type="number" id="cfg-cpm" placeholder="Ej: 5.00" min="0" step="0.01" />
+          <p class="field-hint">Costo por cada mil personas alcanzadas, en dólares. Varía por país y tipo de medio.</p>
+        </div>
+        <div class="field-group">
+          <label for="cfg-multiplier">Multiplicador editorial</label>
+          <input type="number" id="cfg-multiplier" placeholder="Ej: 2.5" min="1" step="0.1" />
+          <p class="field-hint">Factor que pondera el valor de una nota periodística frente a una publicidad. Valor recomendado: entre 2 y 3.</p>
+        </div>
+        <div class="save-btn-row">
+          <button class="btn btn-primary" onclick="saveConfigSection('cfg-save-4')">Guardar</button>
+          <span class="config-save-confirm" id="cfg-save-4">✓ Guardado</span>
+        </div>
       </div>
     </main><!-- /screen-brand-config -->
 
@@ -348,6 +372,32 @@
         </table>
       </div>
     </main><!-- /screen-mailing -->
+
+    <!-- SCREEN: EXPORTAR DATOS -->
+    <main class="app-main hidden" id="screen-export">
+      <div class="card">
+        <div class="step-label">Exportar</div>
+        <h2 class="section-title" id="export-title">Exportar datos</h2>
+
+        <h3 class="config-section-title">Período</h3>
+        <div class="export-period-grid">
+          <div class="field-group">
+            <label>Desde</label>
+            <input type="date" disabled />
+          </div>
+          <div class="field-group">
+            <label>Hasta</label>
+            <input type="date" disabled />
+          </div>
+        </div>
+        <p class="field-hint" style="margin-bottom:4px;">La selección de período estará disponible cuando la app esté conectada a base de datos.</p>
+
+        <h3 class="config-section-title">Exportar sesión actual</h3>
+        <p class="section-desc" style="margin-bottom:10px;">Exportá las menciones de la sesión actual en formato Excel con todos los campos clasificados.</p>
+        <p class="field-hint" style="margin-bottom:16px;">Campos incluidos: Fecha · Título · Link · Medio · País · Sentimiento · Tipo de nota · Vocero · Visibilidad · Alcance · Interacciones</p>
+        <button class="btn btn-primary" onclick="exportToExcel()">↓ Exportar Excel</button>
+      </div>
+    </main><!-- /screen-export -->
 
     <!-- SCREEN: HISTORIAL DE REPORTES -->
     <main class="app-main hidden" id="screen-history">
@@ -397,6 +447,7 @@
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
