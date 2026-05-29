@@ -786,6 +786,40 @@ function escapeHTML(str) {
     .replace(/"/g, '&quot;');
 }
 
+// ===== NAVEGACIÓN DE PANTALLAS =====
+
+function showScreen(screen) {
+  ['report', 'brand-config', 'mailing', 'history'].forEach(s => {
+    const el = document.getElementById(`screen-${s}`);
+    if (el) el.classList.toggle('hidden', s !== screen);
+  });
+
+  ['brand-config', 'mailing', 'history'].forEach(s => {
+    const el = document.getElementById(`nav-${s}`);
+    if (el) el.classList.toggle('active', s === screen);
+  });
+
+  const newReportBtn = document.getElementById('nav-report');
+  if (newReportBtn) newReportBtn.classList.toggle('active', screen === 'report');
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function onBrandChange() {
+  const brand = document.getElementById('sidebar-brand');
+  if (!brand) return;
+  const brandName = brand.options[brand.selectedIndex].text;
+  const historyTitle = document.getElementById('history-title');
+  if (historyTitle) historyTitle.textContent = `Historial de reportes — ${brandName}`;
+}
+
+function saveConfigSection(confirmId) {
+  const el = document.getElementById(confirmId);
+  if (!el) return;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 2500);
+}
+
 function showStatus(id, type, message) {
   const el = document.getElementById(id);
   el.className = `send-status ${type}`;
