@@ -7,6 +7,14 @@ let _confirmCallback = null;
 let filterSentiments = new Set();
 let filterNoteTypes = new Set();
 
+const BRANDS_BY_COUNTRY = {
+  argentina: ['Logitech', 'Herbalife', 'IFX', 'AWS'],
+  colombia:  ['Makro', 'IFX', 'Burger King', 'Manpower'],
+  peru:      ['Manpower', 'Herbalife', 'Logitech'],
+  chile:     ['AWS', 'Logitech'],
+  mexico:    ['Siigo']
+};
+
 // ===== TÍTULO AUTOMÁTICO =====
 
 function getReportTitle() {
@@ -61,6 +69,9 @@ function updateTitlePreview() {
 
 document.getElementById('report-client').addEventListener('input',  updateTitlePreview);
 document.getElementById('report-date').addEventListener('change', updateTitlePreview);
+
+// Inicializar selectores en cascada de país/marca
+onCountryChange();
 
 // ===== PARSEO TALKWALKER CSV =====
 
@@ -805,12 +816,37 @@ function showScreen(screen) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+function onCountryChange() {
+  const countryEl = document.getElementById('sidebar-country');
+  const brandEl = document.getElementById('sidebar-brand');
+  if (!countryEl || !brandEl) return;
+  const brands = BRANDS_BY_COUNTRY[countryEl.value] || [];
+  brandEl.innerHTML = brands
+    .map(b => `<option value="${b.toLowerCase().replace(/[\s&]/g, '-')}">${b}</option>`)
+    .join('');
+  updateScreenTitles();
+}
+
 function onBrandChange() {
-  const brand = document.getElementById('sidebar-brand');
-  if (!brand) return;
-  const brandName = brand.options[brand.selectedIndex].text;
-  const historyTitle = document.getElementById('history-title');
-  if (historyTitle) historyTitle.textContent = `Historial de reportes — ${brandName}`;
+  updateScreenTitles();
+}
+
+function updateScreenTitles() {
+  const countryEl = document.getElementById('sidebar-country');
+  const brandEl = document.getElementById('sidebar-brand');
+  if (!countryEl || !brandEl) return;
+  const countryName = countryEl.options[countryEl.selectedIndex]?.text || '';
+  const brandName = brandEl.options[brandEl.selectedIndex]?.text || '';
+  const suffix = (countryName && brandName) ? ` — ${countryName} · ${brandName}` : '';
+  const screens = {
+    'history-title':      'Historial de reportes',
+    'brand-config-title': 'Configuración de marca',
+    'mailing-title':      'Listas de correo'
+  };
+  Object.entries(screens).forEach(([id, base]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = base + suffix;
+  });
 }
 
 function saveConfigSection(confirmId) {

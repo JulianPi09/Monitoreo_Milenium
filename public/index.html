@@ -17,11 +17,19 @@
       <img src="/logo/Logo%20Horizontal.%20Negativo.png" alt="Milenium Group" class="sidebar-logo" />
     </div>
     <div class="sidebar-brand-area">
+      <label class="sidebar-section-label" for="sidebar-country">País</label>
+      <select class="sidebar-brand-select" id="sidebar-country" onchange="onCountryChange()">
+        <option value="argentina">Argentina</option>
+        <option value="colombia">Colombia</option>
+        <option value="peru">Perú</option>
+        <option value="chile">Chile</option>
+        <option value="mexico">México</option>
+      </select>
+    </div>
+    <div class="sidebar-brand-area">
       <label class="sidebar-section-label" for="sidebar-brand">Marca</label>
       <select class="sidebar-brand-select" id="sidebar-brand" onchange="onBrandChange()">
-        <option value="makro">Makro</option>
-        <option value="herbalife">Herbalife</option>
-        <option value="manpower">Manpower</option>
+        <!-- poblado por JS al cargar -->
       </select>
     </div>
     <nav class="sidebar-nav">
@@ -50,8 +58,7 @@
 
     <!-- HEADER -->
     <header class="app-header">
-      <img src="/logo/Logo%20Horizontal.%20Negativo.png" alt="Milenium Group" class="header-logo" />
-      <span class="header-tag">Clipping de Medios</span>
+      <span class="header-tag">Monitoreo de Medios</span>
     </header>
 
     <!-- SCREEN: FLUJO DE REPORTE (default) -->
@@ -254,7 +261,7 @@
     <main class="app-main hidden" id="screen-brand-config">
       <div class="card">
         <div class="step-label">Configuración</div>
-        <h2 class="section-title">Configuración de marca</h2>
+        <h2 class="section-title" id="brand-config-title">Configuración de marca</h2>
 
         <!-- Sección 1: Encabezado del reporte -->
         <h3 class="config-section-title">Encabezado del reporte</h3>
@@ -320,7 +327,7 @@
         <div class="screen-header-row">
           <div>
             <div class="step-label">Correos</div>
-            <h2 class="section-title">Listas de correo</h2>
+            <h2 class="section-title" id="mailing-title">Listas de correo</h2>
           </div>
           <button class="btn btn-primary">Nueva lista</button>
         </div>
@@ -346,7 +353,7 @@
     <main class="app-main hidden" id="screen-history">
       <div class="card">
         <div class="step-label">Historial</div>
-        <h2 class="section-title" id="history-title">Historial de reportes — Makro</h2>
+        <h2 class="section-title" id="history-title">Historial de reportes</h2>
         <table class="data-table">
           <thead>
             <tr>

@@ -23,8 +23,12 @@ body {
 }
 
 .sidebar-top {
-  padding: 18px 16px 14px;
-  border-bottom: 1px solid #2a2a2a;
+  height: 66px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-bottom: 1px solid #2d2d2d;
 }
 
 .sidebar-logo {
@@ -140,14 +144,16 @@ body {
 
 /* ===== HEADER ===== */
 .app-header {
-  background: #000000;
-  padding: 20px 40px;
+  background: #1a1a1a;
+  height: 66px;
+  padding: 0 40px;
   display: flex;
   align-items: center;
   gap: 20px;
   position: sticky;
   top: 0;
   z-index: 100;
+  border-bottom: 1px solid #2d2d2d;
 }
 
 .header-logo {
