@@ -135,6 +135,24 @@ body {
 
 .sidebar-ri-btn:hover { color: #aaaaaa; }
 
+.sidebar-new-report-area {
+  padding: 14px 16px;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.sidebar-static-value {
+  background: #232323;
+  color: #cccccc;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.sidebar-static-value.hidden { display: none; }
+
 .sidebar-new-report {
   display: block;
   width: 100%;
@@ -251,6 +269,80 @@ body {
 }
 
 .card.hidden { display: none; }
+
+/* ===== PASO 0: SELECCIÓN DE PAÍS Y MARCA ===== */
+#screen-step0 {
+  min-height: calc(100vh - 66px);
+  align-items: center;
+  justify-content: center;
+}
+
+.step0-welcome {
+  font-family: 'Oswald', sans-serif;
+  font-size: 38px;
+  font-weight: 600;
+  color: #000000;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.step0-card {
+  background: #FFFFFF;
+  border-radius: 6px;
+  padding: 40px;
+  border-top: 3px solid #FF0B2E;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.step0-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: #000000;
+  margin-bottom: 6px;
+}
+
+.step0-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #888888;
+  margin-bottom: 28px;
+}
+
+.step0-card .field-group {
+  text-align: left;
+  margin-bottom: 16px;
+}
+
+.step0-card select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #E0E0E0;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #000000;
+  background: #FFFFFF;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.step0-card select:focus { border-color: #FF0B2E; }
+.step0-card select:disabled { background: #F5F5F5; color: #999999; cursor: not-allowed; }
+
+.step0-card .btn-primary {
+  width: 100%;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.step0-card .btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 .step-label {
   font-family: 'Inter', sans-serif;
@@ -1071,6 +1163,35 @@ textarea {
   width: 100%;
 }
 
+.modal-content-sm {
+  width: 90vw;
+  max-width: 480px;
+  height: auto;
+  max-height: 80vh;
+}
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #1A1A1A;
+  line-height: 1.6;
+}
+
+.modal-body strong { font-weight: 600; }
+
+.modal-body .recipients-list {
+  margin-top: 10px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: #F7F7F7;
+  border: 1px solid #E0E0E0;
+  border-radius: 4px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
 /* ===== PAGINACIÓN ===== */
 .pagination {
   display: flex;
@@ -1135,6 +1256,14 @@ textarea {
   line-height: 1.5;
 }
 
+.confirm-msg-sub {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #888888;
+}
+
 .confirm-actions {
   display: flex;
   gap: 10px;
@@ -1151,6 +1280,46 @@ textarea {
 }
 
 .screen-header-row .section-title { margin-bottom: 0; }
+
+/* ===== LISTA DE CORREOS: FORMULARIO INLINE ===== */
+.mailing-form {
+  background: #FAFAFA;
+  border: 1.5px solid #E0E0E0;
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.mailing-form.hidden { display: none; }
+
+.mailing-form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.mailing-table-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ===== PASO 3: SELECTOR DE LISTA GUARDADA ===== */
+.recipients-list-select {
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  border: 1.5px solid #E0E0E0;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #000000;
+  background: #FFFFFF;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.recipients-list-select:focus { border-color: #FF0B2E; }
+.recipients-list-select:disabled { background: #F5F5F5; color: #999999; cursor: not-allowed; }
 
 .radio-option {
   display: flex;

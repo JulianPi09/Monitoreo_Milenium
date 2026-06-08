@@ -16,21 +16,28 @@
     <div class="sidebar-top">
       <img src="/logo/Logo%20Horizontal.%20Negativo.png" alt="Milenium Group" class="sidebar-logo" />
     </div>
+    <div class="sidebar-new-report-area">
+      <button class="sidebar-new-report active" id="nav-report" onclick="onNewReportClick()">
+        + Nuevo reporte
+      </button>
+    </div>
     <div class="sidebar-brand-area">
       <label class="sidebar-section-label" for="sidebar-country">País</label>
       <select class="sidebar-brand-select" id="sidebar-country" onchange="onCountryChange()">
         <option value="argentina">Argentina</option>
-        <option value="colombia">Colombia</option>
-        <option value="peru">Perú</option>
         <option value="chile">Chile</option>
+        <option value="colombia">Colombia</option>
         <option value="mexico">México</option>
+        <option value="peru">Perú</option>
       </select>
+      <div class="sidebar-static-value hidden" id="sidebar-country-static"></div>
     </div>
     <div class="sidebar-brand-area">
       <label class="sidebar-section-label" for="sidebar-brand">Marca</label>
       <select class="sidebar-brand-select" id="sidebar-brand" onchange="onBrandChange()">
         <!-- poblado por JS al cargar -->
       </select>
+      <div class="sidebar-static-value hidden" id="sidebar-brand-static"></div>
     </div>
     <nav class="sidebar-nav">
       <button class="sidebar-nav-item" id="nav-brand-config" onclick="showScreen('brand-config')">
@@ -51,9 +58,6 @@
       </button>
     </nav>
     <div class="sidebar-footer">
-      <button class="sidebar-new-report active" id="nav-report" onclick="showScreen('report')">
-        + Nuevo reporte
-      </button>
       <button class="sidebar-ri-btn" onclick="alert('Esta función estará disponible en la plataforma completa.')">Volver a Reputation Intelligence</button>
     </div>
   </aside>
@@ -69,8 +73,37 @@
 
     <button class="btn-back-to-report hidden" id="btn-back-to-report" onclick="showScreen('report')">← Volver al reporte</button>
 
-    <!-- SCREEN: FLUJO DE REPORTE (default) -->
-    <main class="app-main" id="screen-report">
+    <!-- SCREEN: PASO 0 — SELECCIÓN DE PAÍS Y MARCA -->
+    <main class="app-main" id="screen-step0">
+      <h1 class="step0-welcome">Bienvenido</h1>
+      <div class="step0-card">
+        <h2 class="step0-title">Seleccioná el país y la marca</h2>
+        <p class="step0-subtitle">Esta selección definirá la configuración del reporte</p>
+
+        <div class="field-group">
+          <label for="step0-country">País</label>
+          <select id="step0-country" onchange="onStep0CountryChange()">
+            <option value="" selected disabled>—</option>
+            <option value="argentina">Argentina</option>
+            <option value="chile">Chile</option>
+            <option value="colombia">Colombia</option>
+            <option value="mexico">México</option>
+            <option value="peru">Perú</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label for="step0-brand">Marca</label>
+          <select id="step0-brand" onchange="onStep0BrandChange()" disabled>
+            <option value="" selected disabled>—</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary" id="btn-step0-start" onclick="startSession()" disabled>Comenzar →</button>
+      </div>
+    </main><!-- /screen-step0 -->
+
+    <!-- SCREEN: FLUJO DE REPORTE -->
+    <main class="app-main hidden" id="screen-report">
 
       <!-- PASO 1: PEGAR TALKWALKER -->
       <section class="card" id="step-rss">
@@ -105,7 +138,7 @@
           <div class="csv-file-name hidden" id="csv-file-name"></div>
         </div>
 
-        <button class="btn btn-primary" id="btn-parse">Parsear CSV</button>
+        <button class="btn btn-primary" id="btn-parse" disabled>Parsear CSV</button>
       </section>
 
       <!-- PASO 2: MENCIONES -->
@@ -218,6 +251,9 @@
 
         <div class="field-group">
           <label for="recipients">Destinatarios <span class="hint">separados por coma</span></label>
+          <select id="recipients-list-select" class="recipients-list-select" onchange="onRecipientsListSelect()">
+            <option value="">Seleccionar lista guardada...</option>
+          </select>
           <input type="text" id="recipients" placeholder="email1@ejemplo.com, email2@ejemplo.com" />
         </div>
 
@@ -395,8 +431,25 @@
             <div class="step-label">Correos</div>
             <h2 class="section-title" id="mailing-title">Listas de correo</h2>
           </div>
-          <button class="btn btn-primary">Nueva lista</button>
+          <button class="btn btn-primary" onclick="toggleMailingForm()">Nueva lista</button>
         </div>
+
+        <div class="mailing-form hidden" id="mailing-form">
+          <input type="hidden" id="mailing-form-edit-id" value="" />
+          <div class="field-group">
+            <label for="mailing-list-name">Nombre de la lista</label>
+            <input type="text" id="mailing-list-name" placeholder="Ej: Prensa Nacional" />
+          </div>
+          <div class="field-group">
+            <label for="mailing-list-recipients">Destinatarios <span class="hint">separados por coma</span></label>
+            <textarea id="mailing-list-recipients" placeholder="email1@ejemplo.com, email2@ejemplo.com"></textarea>
+          </div>
+          <div class="mailing-form-actions">
+            <button class="btn btn-primary" onclick="saveMailingList()">Guardar</button>
+            <button class="btn btn-outline" onclick="closeMailingForm()">Cancelar</button>
+          </div>
+        </div>
+
         <table class="data-table">
           <thead>
             <tr>
@@ -406,7 +459,7 @@
               <th>Acciones</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="mailing-table-body">
             <tr>
               <td colspan="4" class="table-empty">Aún no hay listas creadas</td>
             </tr>
@@ -454,7 +507,7 @@
               <th>Acciones</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="history-table-body">
             <tr>
               <td colspan="3" class="table-empty">Aún no hay reportes enviados para esta marca</td>
             </tr>
@@ -474,6 +527,30 @@
         <button class="modal-close" onclick="closePreview()">✕</button>
       </div>
       <iframe id="preview-frame" class="preview-frame"></iframe>
+    </div>
+  </div>
+
+  <!-- MODAL VER DESTINATARIOS -->
+  <div id="recipients-modal" class="modal hidden">
+    <div class="modal-overlay" onclick="closeRecipientsModal()"></div>
+    <div class="modal-content modal-content-sm">
+      <div class="modal-header">
+        <span>Destinatarios</span>
+        <button class="modal-close" onclick="closeRecipientsModal()">✕</button>
+      </div>
+      <div class="modal-body" id="recipients-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- DIÁLOGO DE CONFIRMACIÓN: NUEVO REPORTE -->
+  <div id="new-report-confirm" class="confirm-overlay hidden">
+    <div class="confirm-overlay-bg" onclick="closeNewReportConfirm()"></div>
+    <div class="confirm-box">
+      <p class="confirm-msg">¿Iniciár un nuevo reporte?<br><span class="confirm-msg-sub">Se perderán los datos de la sesión actual.</span></p>
+      <div class="confirm-actions">
+        <button class="btn btn-primary" onclick="confirmNewReport()">Sí, nuevo reporte</button>
+        <button class="btn btn-outline" onclick="closeNewReportConfirm()">Cancelar</button>
+      </div>
     </div>
   </div>
 
