@@ -147,6 +147,8 @@ function runCSVParse(rawText) {
     const iSource     = col('extra_source_attributes.name');
     const iPublished  = col('published');
     const iSnippet    = col('content_snippet');
+    const iContent    = col('content');
+    const iTitleSnippet = col('title_snippet');
     const iUrl        = col('url');
     const iSentiment  = col('sentiment');
     const iReach      = col('reach');
@@ -159,6 +161,11 @@ function runCSVParse(rawText) {
     }
 
     const get = (row, idx) => (idx !== -1 && idx < row.length) ? row[idx].trim() : '';
+
+    // Configuración de la marca activa: palabras clave y voceros para detección automática (exclusivo del Excel)
+    const activeBrandConfig = getActiveBrandTags();
+    const keywordList = parseCommaList(activeBrandConfig && activeBrandConfig.palabrasClave);
+    const spokespeopleList = parseCommaList(activeBrandConfig && activeBrandConfig.voceros);
 
     parsed = rows.slice(1)
       .filter(row => row.some(cell => cell.trim() !== '')) // ignorar filas vacías
@@ -183,9 +190,16 @@ function runCSVParse(rawText) {
 
         const sourceVal = get(row, iSource) || extractDomain(get(row, iUrl)) || '';
 
+        // Detección automática de visibilidad y voceros: revisa title+title_snippet (lado titular) y content+content_snippet (lado contenido) (exclusivo del Excel)
+        const titleText = get(row, iTitle);
+        const titleSideText = `${titleText} ${get(row, iTitleSnippet)}`;
+        const contentSideText = `${get(row, iContent)} ${get(row, iSnippet)}`;
+        const visibilidad = detectVisibilidad(titleSideText, contentSideText, keywordList);
+        const vocero = detectVocero(titleSideText, contentSideText, spokespeopleList);
+
         return {
           id: `m_${idx}_${Date.now()}`,
-          title:       get(row, iTitle) || 'Sin título',
+          title:       titleText || 'Sin título',
           source:      sourceVal,
           date,
           description: get(row, iSnippet),
@@ -195,6 +209,8 @@ function runCSVParse(rawText) {
           reach:       (!isNaN(reach) && reach !== null)           ? reach      : null,
           engagement:  (!isNaN(engagement) && engagement !== null) ? engagement : null,
           tagsCustomer: get(row, iTagsCustomer),
+          visibilidad,
+          vocero,
         };
       });
 
@@ -290,6 +306,48 @@ function parseTWDate(str) {
   const d = new Date(year, parseInt(mm, 10) - 1, parseInt(dd, 10),
                      parseInt(hh, 10), parseInt(min, 10), parseInt(ss, 10));
   return formatDate(d);
+}
+
+// ===== DETECCIÓN AUTOMÁTICA: VISIBILIDAD Y VOCEROS (exclusivo del Excel) =====
+
+function parseCommaList(str) {
+  return (str || '').split(',').map(s => s.trim()).filter(Boolean);
+}
+
+// Listas de etiquetas TalkWalker (separadas por coma, punto y coma o barra vertical), igual que en server.js
+function parseTagList(str) {
+  return (str || '').split(/[,;|]/).map(t => t.trim()).filter(Boolean);
+}
+
+// Filtra las menciones que pertenecen a la sección MARCA según las etiquetas de marca configuradas (tags_customer).
+// Si no hay etiquetas de marca configuradas para la marca activa, devuelve todas las menciones sin filtrar.
+function filterMentionsBySectionMarca(allMentions) {
+  const brandConfig = getActiveBrandTags();
+  const brandTagList = parseTagList(brandConfig && brandConfig.brand);
+  if (!brandTagList.length) return allMentions;
+  return allMentions.filter(m => {
+    const mentionTags = parseTagList(m.tagsCustomer);
+    return mentionTags.some(mt => brandTagList.some(ct => mt.toLowerCase() === ct.toLowerCase()));
+  });
+}
+
+function detectVisibilidad(title, content, keywords) {
+  if (!keywords.length) return '';
+  const titleLower = (title || '').toLowerCase();
+  const contentLower = (content || '').toLowerCase();
+  const inTitle = keywords.some(k => titleLower.includes(k.toLowerCase()));
+  const inContent = keywords.some(k => contentLower.includes(k.toLowerCase()));
+  if (inTitle && inContent) return 'En titular y contenido';
+  if (inTitle) return 'En titular';
+  if (inContent) return 'En contenido';
+  return '';
+}
+
+function detectVocero(title, content, spokespeople) {
+  if (!spokespeople.length) return '';
+  const text = `${title || ''} ${content || ''}`.toLowerCase();
+  const found = spokespeople.filter(name => text.includes(name.toLowerCase()));
+  return found.join(', ');
 }
 
 // ===== FILTROS =====
@@ -878,7 +936,9 @@ function exportToExcel() {
   const sentLabel = s => s === 'positive' ? 'Positiva' : s === 'negative' ? 'Negativa' : 'Neutral';
   const noteLabel = n => n === 'proactiva' ? 'Proactiva' : n === 'reactiva' ? 'Reactiva' : 'Espontánea';
 
-  const rows = mentions.map(m => ({
+  const exportMentions = filterMentionsBySectionMarca(mentions);
+
+  const rows = exportMentions.map(m => ({
     'Fecha':         m.date        || '',
     'Título':        m.title       || '',
     'Link':          m.link        || '',
@@ -886,8 +946,8 @@ function exportToExcel() {
     'País':          countryName,
     'Sentimiento':   sentLabel(m.sentiment),
     'Tipo de nota':  noteLabel(m.noteType),
-    'Vocero':        '',
-    'Visibilidad':   '',
+    'Vocero':        m.vocero       || '',
+    'Visibilidad':   m.visibilidad  || '',
     'Alcance':       m.reach       ?? '',
     'Interacciones': m.engagement  ?? ''
   }));
@@ -935,16 +995,36 @@ function getActiveBrandTags() {
   return saved ? JSON.parse(saved) : null;
 }
 
-function saveTagsConfig() {
+// Lee la configuración guardada de la marca activa y aplica los cambios indicados, preservando el resto de campos
+function updateActiveBrandConfig(changes) {
   const suffix = getBrandStorageSuffix();
   if (!suffix) return;
-  const data = {
+  const saved = localStorage.getItem(`brandConfig_${suffix}`);
+  const data = saved ? JSON.parse(saved) : {};
+  Object.assign(data, changes);
+  localStorage.setItem(`brandConfig_${suffix}`, JSON.stringify(data));
+}
+
+function saveTagsConfig() {
+  if (!getBrandStorageSuffix()) return;
+  updateActiveBrandConfig({
     brand:  document.getElementById('cfg-tags-brand').value,
     comp:   document.getElementById('cfg-tags-comp').value,
     sector: document.getElementById('cfg-tags-sector').value
-  };
-  localStorage.setItem(`brandConfig_${suffix}`, JSON.stringify(data));
+  });
   saveConfigSection('cfg-save-1');
+}
+
+function saveKeywordsConfig() {
+  if (!getBrandStorageSuffix()) return;
+  updateActiveBrandConfig({ palabrasClave: document.getElementById('cfg-keywords').value });
+  saveConfigSection('cfg-save-2');
+}
+
+function saveSpokespeopleConfig() {
+  if (!getBrandStorageSuffix()) return;
+  updateActiveBrandConfig({ voceros: document.getElementById('cfg-spokespeople').value });
+  saveConfigSection('cfg-save-3');
 }
 
 function showBrandLogoPreview(dataUrl) {
@@ -981,10 +1061,12 @@ function loadBrandConfigScreen() {
   if (!suffix) return;
 
   const savedTags = localStorage.getItem(`brandConfig_${suffix}`);
-  const tags = savedTags ? JSON.parse(savedTags) : { brand: '', comp: '', sector: '' };
+  const tags = savedTags ? JSON.parse(savedTags) : {};
   document.getElementById('cfg-tags-brand').value = tags.brand || '';
   document.getElementById('cfg-tags-comp').value = tags.comp || '';
   document.getElementById('cfg-tags-sector').value = tags.sector || '';
+  document.getElementById('cfg-keywords').value = tags.palabrasClave || '';
+  document.getElementById('cfg-spokespeople').value = tags.voceros || '';
 
   showBrandLogoPreview(localStorage.getItem(`brandLogo_${suffix}`));
 }
