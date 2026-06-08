@@ -90,11 +90,15 @@ function cardsRowHTML(cardsHTML) {
   return `<tr><td style="padding:0 40px;">${cardsHTML}</td></tr>`;
 }
 
-function mentionCardHTML(m) {
+function mentionCardHTML(m, brandTags) {
   const color = sentimentColor(m.sentiment);
   const label = sentimentLabel(m.sentiment);
   const badgeBg = color;
-  const noteTypeLbl = m.noteType ? noteTypeLabel(m.noteType) : null;
+  // El badge de tipo de nota solo se muestra en menciones de la sección MARCA,
+  // según las mismas etiquetas configuradas que agrupan las secciones del reporte.
+  const brandList = parseTagList(brandTags && brandTags.brand);
+  const isBrandMention = matchesAnyTag(parseTagList(m.tagsCustomer), brandList);
+  const noteTypeLbl = (isBrandMention && m.noteType) ? noteTypeLabel(m.noteType) : null;
   const date = m.date ? `<p style="margin:0 0 6px 0;font-size:12px;color:#888888;font-family:'Inter',sans-serif;">${m.date}</p>` : '';
   const source = m.source ? `<p style="margin:0 0 4px 0;font-size:12px;font-weight:600;color:#FF0B2E;font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">${m.source}</p>` : '';
   const desc = m.description ? `<p style="margin:8px 0 0 0;font-size:14px;color:#333333;font-family:'Inter',sans-serif;line-height:1.5;">${m.description}</p>` : '';
@@ -162,7 +166,7 @@ function buildMentionsSectionHTML(sortedMentions, brandTags) {
   const grouped = groupMentionsBySection(sortedMentions, brandTags);
 
   if (!grouped) {
-    return `<tr><td style="padding:24px 40px 32px 40px;">${sortedMentions.map(mentionCardHTML).join('')}</td></tr>`;
+    return `<tr><td style="padding:24px 40px 32px 40px;">${sortedMentions.map(m => mentionCardHTML(m, brandTags)).join('')}</td></tr>`;
   }
 
   const rows = [spacerRowHTML(24)];
@@ -176,12 +180,12 @@ function buildMentionsSectionHTML(sortedMentions, brandTags) {
     if (!items.length) return;
     if (firstBlockRendered) rows.push(spacerRowHTML(24));
     rows.push(sectionHeaderRowHTML(label));
-    rows.push(cardsRowHTML(items.map(mentionCardHTML).join('')));
+    rows.push(cardsRowHTML(items.map(m => mentionCardHTML(m, brandTags)).join('')));
     firstBlockRendered = true;
   });
 
   if (grouped.none.length) {
-    rows.push(cardsRowHTML(grouped.none.map(mentionCardHTML).join('')));
+    rows.push(cardsRowHTML(grouped.none.map(m => mentionCardHTML(m, brandTags)).join('')));
   }
 
   rows.push(spacerRowHTML(32));
@@ -241,6 +245,13 @@ function buildEmailHTML(mentions, title, brandLogo, brandTags) {
   // Ordenar de mayor a menor engagement (nulls al final)
   const sorted = [...mentions].sort((a, b) => (b.engagement ?? -1) - (a.engagement ?? -1));
 
+  // Los contadores del resumen solo cuentan las menciones de la sección MARCA según las etiquetas configuradas.
+  // Si no hay etiquetas de marca configuradas, no hay menciones de marca y todos los contadores muestran cero.
+  const brandTagList = parseTagList(brandTags && brandTags.brand);
+  const brandMentions = brandTagList.length
+    ? mentions.filter(m => matchesAnyTag(parseTagList(m.tagsCustomer), brandTagList))
+    : [];
+
   const mentionsSectionHTML = buildMentionsSectionHTML(sorted, brandTags);
 
   const reportTitle = title || 'Clipping de Medios';
@@ -282,22 +293,22 @@ function buildEmailHTML(mentions, title, brandLogo, brandTags) {
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
                 <td rowspan="3" align="center" valign="middle" style="padding:12px;background:#F9F9F9;border-radius:4px;vertical-align:middle;width:22%;">
-                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#000000;font-family:'Oswald',sans-serif;">${mentions.length}</p>
-                  <p style="margin:0;font-size:11px;color:#888888;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">Menciones totales</p>
+                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#000000;font-family:'Oswald',sans-serif;">${brandMentions.length}</p>
+                  <p style="margin:0;font-size:11px;color:#888888;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">Menciones de marca</p>
                 </td>
                 <td rowspan="3" width="12"></td>
                 <td align="center" style="padding:12px;background:#F9F9F9;border-radius:4px;">
-                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#1EF455;font-family:'Oswald',sans-serif;">${mentions.filter(m => m.sentiment === 'positive').length}</p>
+                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#1EF455;font-family:'Oswald',sans-serif;">${brandMentions.filter(m => m.sentiment === 'positive').length}</p>
                   <p style="margin:0;font-size:11px;color:#888888;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">Positivas</p>
                 </td>
                 <td width="12"></td>
                 <td align="center" style="padding:12px;background:#F9F9F9;border-radius:4px;">
-                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#F5A623;font-family:'Oswald',sans-serif;">${mentions.filter(m => m.sentiment === 'neutral').length}</p>
+                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#F5A623;font-family:'Oswald',sans-serif;">${brandMentions.filter(m => m.sentiment === 'neutral').length}</p>
                   <p style="margin:0;font-size:11px;color:#888888;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">Neutrales</p>
                 </td>
                 <td width="12"></td>
                 <td align="center" style="padding:12px;background:#F9F9F9;border-radius:4px;">
-                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#FF0B2E;font-family:'Oswald',sans-serif;">${mentions.filter(m => m.sentiment === 'negative').length}</p>
+                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#FF0B2E;font-family:'Oswald',sans-serif;">${brandMentions.filter(m => m.sentiment === 'negative').length}</p>
                   <p style="margin:0;font-size:11px;color:#888888;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">Negativas</p>
                 </td>
               </tr>
@@ -306,17 +317,17 @@ function buildEmailHTML(mentions, title, brandLogo, brandTags) {
               </tr>
               <tr>
                 <td align="center" style="padding:12px;background:#F9F9F9;border-radius:4px;">
-                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#000000;font-family:'Oswald',sans-serif;">${mentions.filter(m => !m.noteType || m.noteType === 'espontanea').length}</p>
+                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#000000;font-family:'Oswald',sans-serif;">${brandMentions.filter(m => !m.noteType || m.noteType === 'espontanea').length}</p>
                   <p style="margin:0;font-size:11px;color:#888888;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">Espontáneas</p>
                 </td>
                 <td width="12"></td>
                 <td align="center" style="padding:12px;background:#F9F9F9;border-radius:4px;">
-                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#000000;font-family:'Oswald',sans-serif;">${mentions.filter(m => m.noteType === 'proactiva').length}</p>
+                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#000000;font-family:'Oswald',sans-serif;">${brandMentions.filter(m => m.noteType === 'proactiva').length}</p>
                   <p style="margin:0;font-size:11px;color:#888888;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">Proactivas</p>
                 </td>
                 <td width="12"></td>
                 <td align="center" style="padding:12px;background:#F9F9F9;border-radius:4px;">
-                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#000000;font-family:'Oswald',sans-serif;">${mentions.filter(m => m.noteType === 'reactiva').length}</p>
+                  <p style="margin:0 0 2px 0;font-size:22px;font-weight:700;color:#000000;font-family:'Oswald',sans-serif;">${brandMentions.filter(m => m.noteType === 'reactiva').length}</p>
                   <p style="margin:0;font-size:11px;color:#888888;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">Reactivas</p>
                 </td>
               </tr>

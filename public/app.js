@@ -76,6 +76,7 @@ onCountryChange();
 
 // Bloquear sidebar con "—" hasta completar el Paso 0
 setSidebarLocked(true, true);
+setSidebarNavLocked(true);
 
 // ===== PARSEO TALKWALKER CSV =====
 
@@ -537,6 +538,11 @@ function renderMentions() {
     return;
   }
 
+  // El selector de tipo de nota solo se muestra en menciones de la sección MARCA
+  // (y solo si hay etiquetas de marca configuradas para la marca activa)
+  const brandConfigForNotes = getActiveBrandTags();
+  const hasBrandTags = parseTagList(brandConfigForNotes && brandConfigForNotes.brand).length > 0;
+
   list.innerHTML = pageMentions.map(m => {
     const publicityFmt = formatCurrency(m.publicity);
     const statsHtml = (m.reach != null || m.engagement != null || publicityFmt != null) ? `
@@ -548,6 +554,7 @@ function renderMentions() {
 
     const isSelected = selectedMentions.has(m.id);
     const noteType = m.noteType || 'espontanea';
+    const showNoteType = hasBrandTags && getMentionSection(m, brandConfigForNotes) === 'marca';
 
     return `
     <div class="mention-card${isSelected ? ' selected' : ''}" data-sentiment="${m.sentiment}" data-id="${m.id}">
@@ -571,11 +578,11 @@ function renderMentions() {
           <option value="positive" ${m.sentiment === 'positive' ? 'selected' : ''}>Positiva</option>
           <option value="negative" ${m.sentiment === 'negative' ? 'selected' : ''}>Negativa</option>
         </select>
-        <select class="notetype-select" onchange="setNoteType('${m.id}', this.value)">
+        ${showNoteType ? `<select class="notetype-select" onchange="setNoteType('${m.id}', this.value)">
           <option value="espontanea" ${noteType === 'espontanea' ? 'selected' : ''}>Espontánea</option>
           <option value="proactiva" ${noteType === 'proactiva' ? 'selected' : ''}>Proactiva</option>
           <option value="reactiva" ${noteType === 'reactiva' ? 'selected' : ''}>Reactiva</option>
-        </select>
+        </select>` : ''}
         <button class="btn-delete" onclick="deleteMention('${m.id}')" title="Eliminar mención">✕</button>
       </div>
     </div>`;
@@ -1030,7 +1037,17 @@ function startSession() {
   onBrandChange();
 
   setSidebarLocked(true);
+  setSidebarNavLocked(false);
   showScreen('report');
+}
+
+// Bloquea/habilita los ítems de navegación del sidebar (Configuración de marca, Lista de correos,
+// Exportar datos, Historial de reportes) hasta que el usuario complete el Paso 0
+function setSidebarNavLocked(locked) {
+  document.querySelectorAll('.sidebar-nav-item').forEach(btn => {
+    btn.classList.toggle('locked', locked);
+    btn.disabled = locked;
+  });
 }
 
 function setSidebarLocked(locked, placeholder) {

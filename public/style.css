@@ -97,6 +97,14 @@ body {
   color: #ffffff;
 }
 
+.sidebar-nav-item.locked,
+.sidebar-nav-item.locked:hover {
+  color: #5a5a5a;
+  background: none;
+  cursor: default;
+  pointer-events: none;
+}
+
 .sidebar-nav-item.active {
   background: #FF0B2E;
   color: #ffffff;
@@ -810,6 +818,7 @@ textarea {
 
 .mention-card[data-sentiment="positive"] .sentiment-select { border-color: #1EF455; color: #0a7a2a; }
 .mention-card[data-sentiment="negative"] .sentiment-select { border-color: #FF0B2E; color: #CC0020; }
+.mention-card[data-sentiment="neutral"] .sentiment-select { border-color: #F5A623; color: #F5A623; }
 
 .notetype-select {
   font-family: 'Inter', sans-serif;
