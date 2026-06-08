@@ -813,6 +813,9 @@ function showScreen(screen) {
   const newReportBtn = document.getElementById('nav-report');
   if (newReportBtn) newReportBtn.classList.toggle('active', screen === 'report');
 
+  const backBtn = document.getElementById('btn-back-to-report');
+  if (backBtn) backBtn.classList.toggle('hidden', screen === 'report');
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

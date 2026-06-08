@@ -211,6 +211,27 @@ body {
   border-radius: 3px;
 }
 
+/* ===== BOTÓN VOLVER AL REPORTE ===== */
+.btn-back-to-report {
+  display: block;
+  position: fixed;
+  top: 82px;
+  left: 260px;
+  z-index: 50;
+  margin: 0;
+  background: none;
+  border: none;
+  color: #555555;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.btn-back-to-report:hover {
+  color: #1a1a1a;
+}
+
 /* ===== MAIN ===== */
 .app-main {
   max-width: 760px;
