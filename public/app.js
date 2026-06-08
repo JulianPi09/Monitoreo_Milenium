@@ -75,14 +75,13 @@ onCountryChange();
 
 // ===== PARSEO TALKWALKER CSV =====
 
-// Botón "Parsear CSV" — lee desde el textarea
+// Botón "Parsear CSV" — re-procesa el último archivo subido
 document.getElementById('btn-parse').addEventListener('click', () => {
-  const raw = document.getElementById('tw-input').value;
-  if (!raw.trim()) {
-    alert('Pegá el contenido CSV de TalkWalker, o subí el archivo con el botón de arriba.');
+  if (!lastUploadedCSV.trim()) {
+    alert('Subí el archivo CSV de TalkWalker con el botón de arriba.');
     return;
   }
-  runCSVParse(raw);
+  runCSVParse(lastUploadedCSV);
 });
 
 // Subir archivo — usa FileReader con UTF-8 explícito para evitar Ã©, Ã³, etc.
@@ -104,12 +103,13 @@ function handleFileUpload(e) {
   if (file) readFileAsUTF8(file);
 }
 
+let lastUploadedCSV = '';
+
 function readFileAsUTF8(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
     const text = e.target.result;
-    // Mostrar el texto en el textarea también (útil para depuración)
-    document.getElementById('tw-input').value = text;
+    lastUploadedCSV = text;
     // Actualizar indicador visual del archivo
     const nameEl = document.getElementById('csv-file-name');
     nameEl.textContent = `✓ ${file.name}`;
@@ -119,7 +119,7 @@ function readFileAsUTF8(file) {
     runCSVParse(text);
   };
   reader.onerror = () => {
-    alert('Error al leer el archivo. Intentá pegar el contenido manualmente en el campo de texto.');
+    alert('Error al leer el archivo. Intentá subirlo nuevamente.');
   };
   // UTF-8 explícito: evita que Windows o el navegador reinterpreten como Latin-1
   reader.readAsText(file, 'UTF-8');
