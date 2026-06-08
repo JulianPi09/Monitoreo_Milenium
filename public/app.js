@@ -758,6 +758,7 @@ document.getElementById('btn-continue').addEventListener('click', () => {
     subjectEl.value = getEmailSubject();
   }
   loadSmtpConfig();
+  populateRecipientsListSelect();
 });
 
 // Marcar el asunto como editado manualmente si el usuario escribe
@@ -986,6 +987,7 @@ function showScreen(screen) {
   if (backBtn) backBtn.classList.toggle('hidden', screen === 'report' || screen === 'step0');
 
   if (screen === 'brand-config') loadBrandConfigScreen();
+  if (screen === 'mailing') loadMailingScreen();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1070,11 +1072,13 @@ function onCountryChange() {
     .join('');
   updateScreenTitles();
   if (!document.getElementById('screen-brand-config').classList.contains('hidden')) loadBrandConfigScreen();
+  if (!document.getElementById('screen-mailing').classList.contains('hidden')) loadMailingScreen();
 }
 
 function onBrandChange() {
   updateScreenTitles();
   if (!document.getElementById('screen-brand-config').classList.contains('hidden')) loadBrandConfigScreen();
+  if (!document.getElementById('screen-mailing').classList.contains('hidden')) loadMailingScreen();
 }
 
 function updateScreenTitles() {
@@ -1158,6 +1162,162 @@ function getBrandStorageSuffix() {
   const brandEl = document.getElementById('sidebar-brand');
   if (!countryEl || !brandEl || !countryEl.value || !brandEl.value) return null;
   return `${countryEl.value}_${brandEl.value}`;
+}
+
+// ===== LISTAS DE CORREO: persistencia en localStorage =====
+
+function getEmailListsKey() {
+  const suffix = getBrandStorageSuffix();
+  return suffix ? `emailLists_${suffix}` : null;
+}
+
+function getEmailLists() {
+  const key = getEmailListsKey();
+  if (!key) return [];
+  try {
+    return JSON.parse(localStorage.getItem(key)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveEmailLists(lists) {
+  const key = getEmailListsKey();
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(lists));
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function formatDateDMY(isoDate) {
+  const [y, m, d] = (isoDate || '').split('-');
+  return (y && m && d) ? `${d}/${m}/${y}` : '';
+}
+
+function loadMailingScreen() {
+  const tbody = document.getElementById('mailing-table-body');
+  if (!tbody) return;
+  closeMailingForm();
+  const lists = getEmailLists();
+  if (lists.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="table-empty">Aún no hay listas creadas</td></tr>';
+    return;
+  }
+  tbody.innerHTML = lists.map(list => `
+    <tr>
+      <td>${escapeHTML(list.nombre)}</td>
+      <td>${list.destinatarios.length} destinatario${list.destinatarios.length === 1 ? '' : 's'}</td>
+      <td>${formatDateDMY(list.fechaCreacion)}</td>
+      <td>
+        <div class="mailing-table-actions">
+          <button class="btn btn-sm" onclick="editMailingList('${list.id}')">Editar</button>
+          <button class="btn btn-sm" onclick="deleteMailingList('${list.id}')">Eliminar</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function toggleMailingForm() {
+  const form = document.getElementById('mailing-form');
+  if (form.classList.contains('hidden')) {
+    openMailingForm();
+  } else {
+    closeMailingForm();
+  }
+}
+
+function openMailingForm() {
+  document.getElementById('mailing-form').classList.remove('hidden');
+}
+
+function closeMailingForm() {
+  document.getElementById('mailing-form').classList.add('hidden');
+  document.getElementById('mailing-form-edit-id').value = '';
+  document.getElementById('mailing-list-name').value = '';
+  document.getElementById('mailing-list-recipients').value = '';
+}
+
+function editMailingList(id) {
+  const list = getEmailLists().find(l => l.id === id);
+  if (!list) return;
+  openMailingForm();
+  document.getElementById('mailing-form-edit-id').value = list.id;
+  document.getElementById('mailing-list-name').value = list.nombre;
+  document.getElementById('mailing-list-recipients').value = list.destinatarios.join(', ');
+  document.getElementById('mailing-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function saveMailingList() {
+  const nameEl = document.getElementById('mailing-list-name');
+  const recipientsEl = document.getElementById('mailing-list-recipients');
+  const editId = document.getElementById('mailing-form-edit-id').value;
+
+  const nombre = nameEl.value.trim();
+  if (!nombre) {
+    alert('Ingresá un nombre para la lista.');
+    return;
+  }
+
+  const destinatarios = parseCommaList(recipientsEl.value).filter(isValidEmail);
+  if (destinatarios.length === 0) {
+    alert('Ingresá al menos un email válido, separados por coma.');
+    return;
+  }
+
+  const lists = getEmailLists();
+  if (editId) {
+    const list = lists.find(l => l.id === editId);
+    if (list) {
+      list.nombre = nombre;
+      list.destinatarios = destinatarios;
+    }
+  } else {
+    lists.push({
+      id: `el_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      nombre,
+      destinatarios,
+      fechaCreacion: new Date().toISOString().slice(0, 10)
+    });
+  }
+  saveEmailLists(lists);
+  closeMailingForm();
+  loadMailingScreen();
+}
+
+function deleteMailingList(id) {
+  const list = getEmailLists().find(l => l.id === id);
+  if (!list) return;
+  showConfirm(`¿Eliminar la lista "${list.nombre}"?`, () => {
+    const lists = getEmailLists().filter(l => l.id !== id);
+    saveEmailLists(lists);
+    loadMailingScreen();
+  });
+}
+
+// ===== PASO 3: SELECTOR DE LISTA GUARDADA =====
+
+function populateRecipientsListSelect() {
+  const select = document.getElementById('recipients-list-select');
+  if (!select) return;
+  const lists = getEmailLists();
+  if (lists.length === 0) {
+    select.innerHTML = '<option value="">No hay listas guardadas para esta marca</option>';
+    select.disabled = true;
+    return;
+  }
+  select.disabled = false;
+  select.innerHTML = '<option value="">Seleccionar lista guardada...</option>' +
+    lists.map(l => `<option value="${l.id}">${escapeHTML(l.nombre)}</option>`).join('');
+}
+
+function onRecipientsListSelect() {
+  const select = document.getElementById('recipients-list-select');
+  const list = getEmailLists().find(l => l.id === select.value);
+  if (!list) return;
+  document.getElementById('recipients').value = list.destinatarios.join(', ');
 }
 
 // Logo de la marca activa (país/marca del sidebar), en base64, para incluir en el encabezado del reporte

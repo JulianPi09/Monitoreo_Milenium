@@ -251,6 +251,9 @@
 
         <div class="field-group">
           <label for="recipients">Destinatarios <span class="hint">separados por coma</span></label>
+          <select id="recipients-list-select" class="recipients-list-select" onchange="onRecipientsListSelect()">
+            <option value="">Seleccionar lista guardada...</option>
+          </select>
           <input type="text" id="recipients" placeholder="email1@ejemplo.com, email2@ejemplo.com" />
         </div>
 
@@ -428,8 +431,25 @@
             <div class="step-label">Correos</div>
             <h2 class="section-title" id="mailing-title">Listas de correo</h2>
           </div>
-          <button class="btn btn-primary">Nueva lista</button>
+          <button class="btn btn-primary" onclick="toggleMailingForm()">Nueva lista</button>
         </div>
+
+        <div class="mailing-form hidden" id="mailing-form">
+          <input type="hidden" id="mailing-form-edit-id" value="" />
+          <div class="field-group">
+            <label for="mailing-list-name">Nombre de la lista</label>
+            <input type="text" id="mailing-list-name" placeholder="Ej: Prensa Nacional" />
+          </div>
+          <div class="field-group">
+            <label for="mailing-list-recipients">Destinatarios <span class="hint">separados por coma</span></label>
+            <textarea id="mailing-list-recipients" placeholder="email1@ejemplo.com, email2@ejemplo.com"></textarea>
+          </div>
+          <div class="mailing-form-actions">
+            <button class="btn btn-primary" onclick="saveMailingList()">Guardar</button>
+            <button class="btn btn-outline" onclick="closeMailingForm()">Cancelar</button>
+          </div>
+        </div>
+
         <table class="data-table">
           <thead>
             <tr>
@@ -439,7 +459,7 @@
               <th>Acciones</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="mailing-table-body">
             <tr>
               <td colspan="4" class="table-empty">Aún no hay listas creadas</td>
             </tr>

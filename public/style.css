@@ -1252,6 +1252,46 @@ textarea {
 
 .screen-header-row .section-title { margin-bottom: 0; }
 
+/* ===== LISTA DE CORREOS: FORMULARIO INLINE ===== */
+.mailing-form {
+  background: #FAFAFA;
+  border: 1.5px solid #E0E0E0;
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.mailing-form.hidden { display: none; }
+
+.mailing-form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.mailing-table-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ===== PASO 3: SELECTOR DE LISTA GUARDADA ===== */
+.recipients-list-select {
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  border: 1.5px solid #E0E0E0;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #000000;
+  background: #FFFFFF;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.recipients-list-select:focus { border-color: #FF0B2E; }
+.recipients-list-select:disabled { background: #F5F5F5; color: #999999; cursor: not-allowed; }
+
 .radio-option {
   display: flex;
   align-items: center;
