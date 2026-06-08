@@ -52,8 +52,12 @@
         <span class="sidebar-icon">↓</span>
         <span>Exportar datos</span>
       </button>
+      <button class="sidebar-nav-item" id="nav-saved" onclick="showScreen('saved')">
+        <span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="15" viewBox="0 0 12 15" fill="currentColor" style="display:block;margin:auto;"><path d="M1 0h10a1 1 0 011 1v13.27a.5.5 0 01-.78.42L6 11.5l-5.22 3.19A.5.5 0 010 14.27V1a1 1 0 011-1z"/></svg></span>
+        <span>Menciones guardadas</span>
+      </button>
       <button class="sidebar-nav-item" id="nav-history" onclick="showScreen('history')">
-        <span class="sidebar-icon">🕐</span>
+        <span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15" fill="currentColor" style="display:block;margin:auto;"><path fill-rule="evenodd" clip-rule="evenodd" d="M7.5 1.5a6 6 0 100 12 6 6 0 000-12zM0 7.5a7.5 7.5 0 1115 0A7.5 7.5 0 010 7.5zm8.25-3.75v4.06l2.47 1.43-.75 1.3-3-1.73V3.75h1.28z"/></svg></span>
         <span>Historial de reportes</span>
       </button>
     </nav>
@@ -236,7 +240,11 @@
         <div id="mentions-list"></div>
         <div id="pagination"></div>
 
-        <button class="btn btn-primary" id="btn-continue" style="margin-top:16px;">Continuar al envío →</button>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap;">
+          <button class="btn btn-primary" id="btn-continue">Continuar al envío →</button>
+          <button class="btn btn-gray" onclick="openSaveMentionsModal()">Guardar menciones</button>
+          <span class="save-confirm-msg hidden" id="save-confirm-msg">✓ Menciones guardadas</span>
+        </div>
       </section>
 
       <!-- PASO 3: CONFIGURAR Y ENVIAR -->
@@ -494,6 +502,29 @@
       </div>
     </main><!-- /screen-export -->
 
+    <!-- SCREEN: MENCIONES GUARDADAS -->
+    <main class="app-main hidden" id="screen-saved">
+      <div class="card">
+        <div class="step-label">Guardadas</div>
+        <h2 class="section-title" id="saved-title">Menciones guardadas</h2>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Menciones</th>
+              <th>Fecha de guardado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="saved-table-body">
+            <tr>
+              <td colspan="4" class="table-empty">Aún no hay menciones guardadas para esta marca</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main><!-- /screen-saved -->
+
     <!-- SCREEN: HISTORIAL DE REPORTES -->
     <main class="app-main hidden" id="screen-history">
       <div class="card">
@@ -539,6 +570,27 @@
         <button class="modal-close" onclick="closeRecipientsModal()">✕</button>
       </div>
       <div class="modal-body" id="recipients-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- MODAL GUARDAR MENCIONES -->
+  <div id="save-mentions-modal" class="modal hidden">
+    <div class="modal-overlay" onclick="closeSaveMentionsModal()"></div>
+    <div class="modal-content modal-content-sm">
+      <div class="modal-header">
+        <span>Guardar menciones</span>
+        <button class="modal-close" onclick="closeSaveMentionsModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field-group">
+          <label for="save-mentions-name">Nombre del guardado</label>
+          <input type="text" id="save-mentions-name" placeholder="Nombre..." />
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px;">
+          <button class="btn btn-primary" onclick="confirmSaveMentions()">Guardar</button>
+          <button class="btn btn-outline" onclick="closeSaveMentionsModal()">Cancelar</button>
+        </div>
+      </div>
     </div>
   </div>
 

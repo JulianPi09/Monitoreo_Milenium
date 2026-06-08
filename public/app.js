@@ -978,12 +978,12 @@ function escapeHTML(str) {
 // ===== NAVEGACIÓN DE PANTALLAS =====
 
 function showScreen(screen) {
-  ['step0', 'report', 'brand-config', 'mailing', 'export', 'history'].forEach(s => {
+  ['step0', 'report', 'brand-config', 'mailing', 'export', 'saved', 'history'].forEach(s => {
     const el = document.getElementById(`screen-${s}`);
     if (el) el.classList.toggle('hidden', s !== screen);
   });
 
-  ['brand-config', 'mailing', 'export', 'history'].forEach(s => {
+  ['brand-config', 'mailing', 'export', 'saved', 'history'].forEach(s => {
     const el = document.getElementById(`nav-${s}`);
     if (el) el.classList.toggle('active', s === screen);
   });
@@ -996,6 +996,7 @@ function showScreen(screen) {
 
   if (screen === 'brand-config') loadBrandConfigScreen();
   if (screen === 'mailing') loadMailingScreen();
+  if (screen === 'saved') loadSavedMentionsScreen();
   if (screen === 'history') loadHistoryScreen();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1092,6 +1093,7 @@ function onCountryChange() {
   updateScreenTitles();
   if (!document.getElementById('screen-brand-config').classList.contains('hidden')) loadBrandConfigScreen();
   if (!document.getElementById('screen-mailing').classList.contains('hidden')) loadMailingScreen();
+  if (!document.getElementById('screen-saved').classList.contains('hidden')) loadSavedMentionsScreen();
   if (!document.getElementById('screen-history').classList.contains('hidden')) loadHistoryScreen();
 }
 
@@ -1099,6 +1101,7 @@ function onBrandChange() {
   updateScreenTitles();
   if (!document.getElementById('screen-brand-config').classList.contains('hidden')) loadBrandConfigScreen();
   if (!document.getElementById('screen-mailing').classList.contains('hidden')) loadMailingScreen();
+  if (!document.getElementById('screen-saved').classList.contains('hidden')) loadSavedMentionsScreen();
   if (!document.getElementById('screen-history').classList.contains('hidden')) loadHistoryScreen();
 }
 
@@ -1113,7 +1116,8 @@ function updateScreenTitles() {
     'history-title':      'Historial de reportes',
     'brand-config-title': 'Configuración de marca',
     'mailing-title':      'Listas de correo',
-    'export-title':       'Exportar datos'
+    'export-title':       'Exportar datos',
+    'saved-title':        'Menciones guardadas'
   };
   Object.entries(screens).forEach(([id, base]) => {
     const el = document.getElementById(id);
@@ -1641,5 +1645,129 @@ function deleteHistoryRecord(id) {
     const records = getReportHistory().filter(r => r.id !== id);
     saveReportHistory(records);
     loadHistoryScreen();
+  });
+}
+
+// ===== MENCIONES GUARDADAS: persistencia en localStorage =====
+
+function getSavedMentionsKey() {
+  const suffix = getBrandStorageSuffix();
+  return suffix ? `savedMentions_${suffix}` : null;
+}
+
+function getSavedMentions() {
+  const key = getSavedMentionsKey();
+  if (!key) return [];
+  try {
+    return JSON.parse(localStorage.getItem(key)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function persistSavedMentions(entries) {
+  const key = getSavedMentionsKey();
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(entries));
+}
+
+function openSaveMentionsModal() {
+  if (mentions.length === 0) {
+    alert('No hay menciones para guardar. Parseá el CSV primero.');
+    return;
+  }
+  const defaultName = getReportTitle();
+  const nameEl = document.getElementById('save-mentions-name');
+  nameEl.value = `Menciones · ${defaultName}`;
+  document.getElementById('save-mentions-modal').classList.remove('hidden');
+  nameEl.focus();
+  nameEl.select();
+}
+
+function closeSaveMentionsModal() {
+  document.getElementById('save-mentions-modal').classList.add('hidden');
+}
+
+function confirmSaveMentions() {
+  const name = document.getElementById('save-mentions-name').value.trim();
+  if (!name) {
+    alert('Ingresá un nombre para el guardado.');
+    return;
+  }
+  if (!getSavedMentionsKey()) return;
+
+  const entry = {
+    id: `sm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    nombre: name,
+    menciones: JSON.parse(JSON.stringify(mentions)),
+    totalMenciones: mentions.length,
+    fechaGuardado: Date.now()
+  };
+
+  const entries = getSavedMentions();
+  entries.unshift(entry);
+  persistSavedMentions(entries);
+  closeSaveMentionsModal();
+
+  const msg = document.getElementById('save-confirm-msg');
+  msg.classList.remove('hidden');
+  setTimeout(() => msg.classList.add('hidden'), 2000);
+
+  if (!document.getElementById('screen-saved').classList.contains('hidden')) loadSavedMentionsScreen();
+}
+
+function loadSavedMentionsScreen() {
+  const tbody = document.getElementById('saved-table-body');
+  if (!tbody) return;
+  const entries = getSavedMentions();
+  if (entries.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="table-empty">Aún no hay menciones guardadas para esta marca</td></tr>';
+    return;
+  }
+  tbody.innerHTML = entries.map(entry => `
+    <tr>
+      <td>${escapeHTML(entry.nombre)}</td>
+      <td>${entry.totalMenciones}</td>
+      <td>${formatDateTimeDMY(entry.fechaGuardado)}</td>
+      <td>
+        <div class="mailing-table-actions">
+          <button class="btn btn-sm" onclick="loadSavedEntry('${entry.id}')">Cargar</button>
+          <button class="btn btn-sm" onclick="deleteSavedEntry('${entry.id}')">Eliminar</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function loadSavedEntry(id) {
+  const entry = getSavedMentions().find(e => e.id === id);
+  if (!entry) return;
+  showConfirm('¿Cargar estas menciones? Se reemplazarán las menciones actuales de la sesión.', () => {
+    mentions = JSON.parse(JSON.stringify(entry.menciones));
+    selectedMentions.clear();
+    currentPage = 1;
+    filterSentiments.clear();
+    filterNoteTypes.clear();
+    filterSections.clear();
+    ['positive', 'neutral', 'negative', 'espontanea', 'proactiva', 'reactiva', 'section-marca', 'section-comp', 'section-sector'].forEach(v => {
+      const el = document.getElementById(`filt-${v}`);
+      if (el) el.classList.remove('filter-active');
+    });
+    const stepMentions = document.getElementById('step-mentions');
+    const stepSend = document.getElementById('step-send');
+    if (stepMentions) stepMentions.classList.remove('hidden');
+    if (stepSend) stepSend.classList.add('hidden');
+    renderMentions();
+    showScreen('report');
+    stepMentions.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+
+function deleteSavedEntry(id) {
+  const entry = getSavedMentions().find(e => e.id === id);
+  if (!entry) return;
+  showConfirm(`¿Eliminar "${entry.nombre}"?`, () => {
+    persistSavedMentions(getSavedMentions().filter(e => e.id !== id));
+    loadSavedMentionsScreen();
   });
 }

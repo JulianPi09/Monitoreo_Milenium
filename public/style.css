@@ -463,6 +463,23 @@ textarea {
 
 .btn-outline:hover { background: #F5F5F5; opacity: 1; }
 
+.btn-gray {
+  background: #FFFFFF;
+  color: #333333;
+  border: 1.5px solid #AAAAAA;
+}
+
+.btn-gray:hover { background: #F5F5F5; opacity: 1; }
+
+.save-confirm-msg {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0a7a2a;
+}
+
+.save-confirm-msg.hidden { display: none; }
+
 .btn-sm {
   padding: 7px 14px;
   font-size: 12px;
