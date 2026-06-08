@@ -144,6 +144,15 @@
         <!-- PANEL DE FILTROS -->
         <div class="filter-panel hidden" id="filter-panel">
           <div class="filter-panel-row">
+            <span class="filter-panel-label">Sección</span>
+            <div class="filter-panel-btns" id="filter-section-btns">
+              <button class="btn btn-sm filter-toggle-btn" id="filt-section-marca" onclick="toggleFilterSection('marca')">Marca</button>
+              <button class="btn btn-sm filter-toggle-btn" id="filt-section-comp" onclick="toggleFilterSection('comp')">Competencia</button>
+              <button class="btn btn-sm filter-toggle-btn" id="filt-section-sector" onclick="toggleFilterSection('sector')">Sector</button>
+            </div>
+            <p class="filter-section-hint hidden" id="filter-section-disabled-hint">Configurá las etiquetas de marca para usar este filtro</p>
+          </div>
+          <div class="filter-panel-row">
             <span class="filter-panel-label">Sentimiento</span>
             <div class="filter-panel-btns">
               <button class="btn btn-sm filter-toggle-btn" id="filt-positive" onclick="toggleFilterSentiment('positive')">Positiva</button>
@@ -327,19 +336,52 @@
 
         <!-- Sección 5: AVE -->
         <h3 class="config-section-title">Valor publicitario (AVE)</h3>
-        <p class="field-hint" style="margin-bottom:14px;">Si TalkWalker no provee el valor publicitario automáticamente, la app puede calcularlo usando esta fórmula: Alcance × Tarifa CPM × Multiplicador editorial.</p>
+        <p class="field-hint" style="margin-bottom:14px;">Elegí el método que la app usará para calcular el valor publicitario equivalente de cada mención a partir de su alcance.</p>
+
         <div class="field-group">
-          <label for="cfg-cpm">Tarifa CPM</label>
-          <input type="number" id="cfg-cpm" placeholder="Ej: 5.00" min="0" step="0.01" />
-          <p class="field-hint">Costo por cada mil personas alcanzadas, en dólares. Varía por país y tipo de medio.</p>
+          <label class="radio-option">
+            <input type="radio" name="cfg-ave-method" id="cfg-ave-method-cpm" value="cpm" onchange="onAveMethodChange()" />
+            Método A: Fórmula CPM
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="cfg-ave-method" id="cfg-ave-method-rangos" value="rangos" onchange="onAveMethodChange()" />
+            Método B: Tabla de rangos
+          </label>
         </div>
-        <div class="field-group">
-          <label for="cfg-multiplier">Multiplicador editorial</label>
-          <input type="number" id="cfg-multiplier" placeholder="Ej: 2.5" min="1" step="0.1" />
-          <p class="field-hint">Factor que pondera el valor de una nota periodística frente a una publicidad. Valor recomendado: entre 2 y 3.</p>
+
+        <div id="ave-method-cpm-fields">
+          <div class="field-group">
+            <label for="cfg-cpm">Tarifa CPM</label>
+            <input type="number" id="cfg-cpm" placeholder="Ej: 5.00" min="0" step="0.01" />
+            <p class="field-hint">Costo por cada mil personas alcanzadas, en dólares. Varía por país y tipo de medio.</p>
+          </div>
+          <div class="field-group">
+            <label for="cfg-multiplier">Multiplicador editorial</label>
+            <input type="number" id="cfg-multiplier" placeholder="Ej: 2.5" min="1" step="0.1" />
+            <p class="field-hint">Factor que pondera el valor de una nota periodística frente a una publicidad. Valor recomendado: entre 2 y 3.</p>
+          </div>
         </div>
+
+        <div id="ave-method-rangos-fields" class="hidden">
+          <table class="data-table" id="ave-ranges-table">
+            <thead>
+              <tr><th>Rango de alcance</th><th>Factor</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Más de 10.000.000</td><td><input type="text" id="cfg-ave-range-0" value="0.00015" /></td></tr>
+              <tr><td>5.000.000 – 10.000.000</td><td><input type="text" id="cfg-ave-range-1" value="0.0002" /></td></tr>
+              <tr><td>500.000 – 5.000.000</td><td><input type="text" id="cfg-ave-range-2" value="0.0005" /></td></tr>
+              <tr><td>100.000 – 500.000</td><td><input type="text" id="cfg-ave-range-3" value="0.005" /></td></tr>
+              <tr><td>10.000 – 100.000</td><td><input type="text" id="cfg-ave-range-4" value="0.02" /></td></tr>
+              <tr><td>5.000 – 10.000</td><td><input type="text" id="cfg-ave-range-5" value="0.05" /></td></tr>
+              <tr><td>Menos de 5.000</td><td><input type="text" id="cfg-ave-range-6" value="200 + (alcance × 0.02)" disabled /></td></tr>
+            </tbody>
+          </table>
+          <p class="field-hint">El factor del último rango es fijo: 200 + (alcance × 0.02).</p>
+        </div>
+
         <div class="save-btn-row">
-          <button class="btn btn-primary" onclick="saveConfigSection('cfg-save-4')">Guardar</button>
+          <button class="btn btn-primary" onclick="saveAveConfig()">Guardar</button>
           <span class="config-save-confirm" id="cfg-save-4">✓ Guardado</span>
         </div>
       </div>
@@ -394,7 +436,7 @@
 
         <h3 class="config-section-title">Exportar sesión actual</h3>
         <p class="section-desc" style="margin-bottom:10px;">Exportá las menciones de la sesión actual en formato Excel con todos los campos clasificados.</p>
-        <p class="field-hint" style="margin-bottom:16px;">Campos incluidos: Fecha · Título · Link · Medio · País · Sentimiento · Tipo de nota · Vocero · Visibilidad · Alcance · Interacciones</p>
+        <p class="field-hint" style="margin-bottom:16px;">Campos incluidos: Fecha · Título · Link · Medio · País · Sentimiento · Tipo de nota · Vocero · Visibilidad · Alcance · Interacciones · Publicidad</p>
         <button class="btn btn-primary" onclick="exportToExcel()">↓ Exportar Excel</button>
       </div>
     </main><!-- /screen-export -->

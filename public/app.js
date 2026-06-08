@@ -6,6 +6,7 @@ const PAGE_SIZE = 15;
 let _confirmCallback = null;
 let filterSentiments = new Set();
 let filterNoteTypes = new Set();
+let filterSections = new Set();
 
 const BRANDS_BY_COUNTRY = {
   argentina: ['Logitech', 'Herbalife', 'IFX', 'AWS'],
@@ -211,6 +212,7 @@ function runCSVParse(rawText) {
           tagsCustomer: get(row, iTagsCustomer),
           visibilidad,
           vocero,
+          publicity: calculatePublicity(reach, activeBrandConfig),
         };
       });
 
@@ -230,7 +232,8 @@ function runCSVParse(rawText) {
   currentPage = 1;
   filterSentiments.clear();
   filterNoteTypes.clear();
-  ['positive', 'neutral', 'negative', 'espontanea', 'proactiva', 'reactiva'].forEach(v => {
+  filterSections.clear();
+  ['positive', 'neutral', 'negative', 'espontanea', 'proactiva', 'reactiva', 'section-marca', 'section-comp', 'section-sector'].forEach(v => {
     const el = document.getElementById(`filt-${v}`);
     if (el) el.classList.remove('filter-active');
   });
@@ -319,6 +322,25 @@ function parseTagList(str) {
   return (str || '').split(/[,;|]/).map(t => t.trim()).filter(Boolean);
 }
 
+function mentionMatchesAnyTag(mentionTags, configuredTags) {
+  if (!configuredTags.length) return false;
+  return mentionTags.some(mt => configuredTags.some(ct => mt.toLowerCase() === ct.toLowerCase()));
+}
+
+// Determina a qué sección del reporte pertenece una mención según sus tags_customer
+// y las etiquetas configuradas para la marca activa (misma lógica que agrupa el reporte en server.js).
+// Devuelve 'marca' | 'comp' | 'sector' | 'none'
+function getMentionSection(mention, brandConfig) {
+  const mentionTags = parseTagList(mention.tagsCustomer);
+  const brandList  = parseTagList(brandConfig && brandConfig.brand);
+  const compList   = parseTagList(brandConfig && brandConfig.comp);
+  const sectorList = parseTagList(brandConfig && brandConfig.sector);
+  if (mentionMatchesAnyTag(mentionTags, brandList))  return 'marca';
+  if (mentionMatchesAnyTag(mentionTags, compList))   return 'comp';
+  if (mentionMatchesAnyTag(mentionTags, sectorList)) return 'sector';
+  return 'none';
+}
+
 // Filtra las menciones que pertenecen a la sección MARCA según las etiquetas de marca configuradas (tags_customer).
 // Si no hay etiquetas de marca configuradas para la marca activa, devuelve todas las menciones sin filtrar.
 function filterMentionsBySectionMarca(allMentions) {
@@ -350,19 +372,88 @@ function detectVocero(title, content, spokespeople) {
   return found.join(', ');
 }
 
+// ===== CÁLCULO DE VALOR PUBLICITARIO (AVE) =====
+
+// Aplica la tabla de rangos del Método B según el alcance de la mención
+function calcPublicityByRanges(reach, ranges) {
+  if (reach > 10000000) return reach * ranges[0];
+  if (reach > 5000000)  return reach * ranges[1];
+  if (reach > 500000)   return reach * ranges[2];
+  if (reach > 100000)   return reach * ranges[3];
+  if (reach > 10000)    return reach * ranges[4];
+  if (reach > 5000)     return reach * ranges[5];
+  return 200 + (reach * 0.02);
+}
+
+// Calcula el valor publicitario de una mención según el método AVE configurado para la marca activa.
+// Devuelve 0 si no hay configuración guardada o si los datos necesarios no son válidos.
+function calculatePublicity(reach, aveConfig) {
+  if (!aveConfig || !aveConfig.aveMethod) return 0;
+  const reachNum = Number(reach);
+  if (reach == null || isNaN(reachNum)) return 0;
+
+  if (aveConfig.aveMethod === 'cpm') {
+    const cpm = Number(aveConfig.aveCpm);
+    const multiplier = Number(aveConfig.aveMultiplier);
+    if (isNaN(cpm) || isNaN(multiplier)) return 0;
+    return reachNum * (cpm / 1000) * multiplier;
+  }
+
+  if (aveConfig.aveMethod === 'rangos') {
+    const ranges = (aveConfig.aveRanges || []).map(Number);
+    if (ranges.length !== 6 || ranges.some(isNaN)) return 0;
+    return calcPublicityByRanges(reachNum, ranges);
+  }
+
+  return 0;
+}
+
 // ===== FILTROS =====
 
 function getDisplayMentions() {
-  if (filterSentiments.size === 0 && filterNoteTypes.size === 0) return mentions;
+  if (filterSentiments.size === 0 && filterNoteTypes.size === 0 && filterSections.size === 0) return mentions;
+  const brandConfig = getActiveBrandTags();
   return mentions.filter(m => {
     const sentOk = filterSentiments.size === 0 || filterSentiments.has(m.sentiment);
     const noteOk = filterNoteTypes.size === 0 || filterNoteTypes.has(m.noteType || 'espontanea');
-    return sentOk && noteOk;
+    const sectionOk = filterSections.size === 0 || filterSections.has(getMentionSection(m, brandConfig));
+    return sentOk && noteOk && sectionOk;
   });
 }
 
+// Habilita o deshabilita los botones de filtro por sección según haya o no etiquetas configuradas para la marca activa
+function refreshFilterSectionButtons() {
+  const brandConfig = getActiveBrandTags();
+  const hasAnyTags = parseTagList(brandConfig && brandConfig.brand).length > 0
+                  || parseTagList(brandConfig && brandConfig.comp).length > 0
+                  || parseTagList(brandConfig && brandConfig.sector).length > 0;
+
+  ['marca', 'comp', 'sector'].forEach(v => {
+    document.getElementById(`filt-section-${v}`).disabled = !hasAnyTags;
+  });
+  document.getElementById('filter-section-disabled-hint').classList.toggle('hidden', hasAnyTags);
+
+  if (!hasAnyTags && filterSections.size > 0) {
+    filterSections.clear();
+    ['marca', 'comp', 'sector'].forEach(v =>
+      document.getElementById(`filt-section-${v}`).classList.remove('filter-active')
+    );
+  }
+}
+
 function toggleFilterPanel() {
-  document.getElementById('filter-panel').classList.toggle('hidden');
+  const panel = document.getElementById('filter-panel');
+  const willShow = panel.classList.contains('hidden');
+  panel.classList.toggle('hidden');
+  if (willShow) refreshFilterSectionButtons();
+}
+
+function toggleFilterSection(value) {
+  const btn = document.getElementById(`filt-section-${value}`);
+  if (btn.disabled) return;
+  if (filterSections.has(value)) filterSections.delete(value);
+  else filterSections.add(value);
+  btn.classList.toggle('filter-active', filterSections.has(value));
 }
 
 function toggleFilterSentiment(value) {
@@ -386,11 +477,15 @@ function applyFilter() {
 function clearFilter() {
   filterSentiments.clear();
   filterNoteTypes.clear();
+  filterSections.clear();
   ['positive', 'neutral', 'negative'].forEach(v =>
     document.getElementById(`filt-${v}`).classList.remove('filter-active')
   );
   ['espontanea', 'proactiva', 'reactiva'].forEach(v =>
     document.getElementById(`filt-${v}`).classList.remove('filter-active')
+  );
+  ['marca', 'comp', 'sector'].forEach(v =>
+    document.getElementById(`filt-section-${v}`).classList.remove('filter-active')
   );
   currentPage = 1;
   renderMentions();
@@ -409,7 +504,7 @@ function renderMentions() {
 
   const display = getDisplayMentions();
   const total = display.length;
-  const filterOn = filterSentiments.size > 0 || filterNoteTypes.size > 0;
+  const filterOn = filterSentiments.size > 0 || filterNoteTypes.size > 0 || filterSections.size > 0;
   const pages = totalPages();
   if (currentPage > pages) currentPage = pages;
 
@@ -440,10 +535,12 @@ function renderMentions() {
   }
 
   list.innerHTML = pageMentions.map(m => {
-    const statsHtml = (m.reach != null || m.engagement != null) ? `
+    const publicityFmt = formatCurrency(m.publicity);
+    const statsHtml = (m.reach != null || m.engagement != null || publicityFmt != null) ? `
       <div class="mention-stats">
         ${m.reach != null ? `<span class="mention-stat"><span class="stat-label">Alcance</span> ${formatNumber(m.reach)}</span>` : ''}
         ${m.engagement != null ? `<span class="mention-stat"><span class="stat-label">Interacciones</span> ${formatNumber(m.engagement)}</span>` : ''}
+        ${publicityFmt != null ? `<span class="mention-stat"><span class="stat-label">Publicidad</span> ${publicityFmt}</span>` : ''}
       </div>` : '';
 
     const isSelected = selectedMentions.has(m.id);
@@ -526,7 +623,7 @@ function setSentiment(id, value) {
 }
 
 function setAllSentiment(value) {
-  mentions.forEach(m => m.sentiment = value);
+  getDisplayMentions().forEach(m => m.sentiment = value);
   renderMentions();
 }
 
@@ -542,7 +639,7 @@ function setNoteType(id, value) {
 }
 
 function setAllNoteType(value) {
-  mentions.forEach(m => m.noteType = value);
+  getDisplayMentions().forEach(m => m.noteType = value);
   renderMentions();
 }
 
@@ -558,13 +655,13 @@ function toggleMentionSelect(id) {
 }
 
 function selectAll() {
-  mentions.forEach(m => selectedMentions.add(m.id));
+  getDisplayMentions().forEach(m => selectedMentions.add(m.id));
   renderMentions();
 }
 
 function selectPage() {
   const start = (currentPage - 1) * PAGE_SIZE;
-  mentions.slice(start, start + PAGE_SIZE).forEach(m => selectedMentions.add(m.id));
+  getDisplayMentions().slice(start, start + PAGE_SIZE).forEach(m => selectedMentions.add(m.id));
   renderMentions();
 }
 
@@ -594,12 +691,14 @@ function closeConfirm() {
 
 function confirmSetAllSentiment(value) {
   const labels = { positive: 'Positiva', neutral: 'Neutral', negative: 'Negativa' };
-  showConfirm(`¿Marcar las ${mentions.length} menciones como "${labels[value]}"?`, () => setAllSentiment(value));
+  const n = getDisplayMentions().length;
+  showConfirm(`¿Marcar las ${n} menciones como "${labels[value]}"?`, () => setAllSentiment(value));
 }
 
 function confirmSetAllNoteType(value) {
   const labels = { espontanea: 'Espontánea', proactiva: 'Proactiva', reactiva: 'Reactiva' };
-  showConfirm(`¿Marcar las ${mentions.length} menciones como "${labels[value]}"?`, () => setAllNoteType(value));
+  const n = getDisplayMentions().length;
+  showConfirm(`¿Marcar las ${n} menciones como "${labels[value]}"?`, () => setAllNoteType(value));
 }
 
 function confirmBulkSetSentiment(value) {
@@ -837,6 +936,13 @@ function formatNumber(n) {
   return Number(n).toLocaleString('es-AR');
 }
 
+// Formatea un valor publicitario como moneda, igual que en el reporte (ej: $1.234,56)
+function formatCurrency(n) {
+  const num = Number(n);
+  if (n == null || isNaN(num) || num === 0) return null;
+  return `$${num.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 function extractDomain(url) {
   try {
     return new URL(url).hostname.replace('www.', '');
@@ -949,7 +1055,8 @@ function exportToExcel() {
     'Vocero':        m.vocero       || '',
     'Visibilidad':   m.visibilidad  || '',
     'Alcance':       m.reach       ?? '',
-    'Interacciones': m.engagement  ?? ''
+    'Interacciones': m.engagement  ?? '',
+    'Publicidad':    m.publicity   ?? 0
   }));
 
   const ws = XLSX.utils.json_to_sheet(rows);
@@ -1027,6 +1134,26 @@ function saveSpokespeopleConfig() {
   saveConfigSection('cfg-save-3');
 }
 
+// Muestra los campos correspondientes al método de cálculo de AVE seleccionado
+function onAveMethodChange() {
+  const method = document.querySelector('input[name="cfg-ave-method"]:checked')?.value || 'cpm';
+  document.getElementById('ave-method-cpm-fields').classList.toggle('hidden', method !== 'cpm');
+  document.getElementById('ave-method-rangos-fields').classList.toggle('hidden', method !== 'rangos');
+}
+
+function saveAveConfig() {
+  if (!getBrandStorageSuffix()) return;
+  const method = document.querySelector('input[name="cfg-ave-method"]:checked')?.value || 'cpm';
+  const aveRanges = [0, 1, 2, 3, 4, 5].map(i => document.getElementById(`cfg-ave-range-${i}`).value);
+  updateActiveBrandConfig({
+    aveMethod: method,
+    aveCpm: document.getElementById('cfg-cpm').value,
+    aveMultiplier: document.getElementById('cfg-multiplier').value,
+    aveRanges
+  });
+  saveConfigSection('cfg-save-4');
+}
+
 function showBrandLogoPreview(dataUrl) {
   const img = document.getElementById('brand-logo-img');
   const headerPreview = document.getElementById('brand-header-preview');
@@ -1067,6 +1194,19 @@ function loadBrandConfigScreen() {
   document.getElementById('cfg-tags-sector').value = tags.sector || '';
   document.getElementById('cfg-keywords').value = tags.palabrasClave || '';
   document.getElementById('cfg-spokespeople').value = tags.voceros || '';
+
+  // AVE: método activo, campos del Método A y tabla de rangos del Método B
+  const defaultRanges = ['0.00015', '0.0002', '0.0005', '0.005', '0.02', '0.05'];
+  const aveMethod = tags.aveMethod || 'cpm';
+  document.getElementById('cfg-ave-method-cpm').checked = (aveMethod === 'cpm');
+  document.getElementById('cfg-ave-method-rangos').checked = (aveMethod === 'rangos');
+  document.getElementById('cfg-cpm').value = tags.aveCpm || '';
+  document.getElementById('cfg-multiplier').value = tags.aveMultiplier || '';
+  const aveRanges = (Array.isArray(tags.aveRanges) && tags.aveRanges.length === 6) ? tags.aveRanges : defaultRanges;
+  aveRanges.forEach((val, i) => {
+    document.getElementById(`cfg-ave-range-${i}`).value = val;
+  });
+  onAveMethodChange();
 
   showBrandLogoPreview(localStorage.getItem(`brandLogo_${suffix}`));
 }

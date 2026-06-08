@@ -802,6 +802,27 @@ textarea {
   color: #FFFFFF !important;
 }
 
+.filter-toggle-btn:disabled {
+  background: #1A1A1A !important;
+  border-color: #2A2A2A !important;
+  color: #666666 !important;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.filter-toggle-btn:disabled:hover {
+  background: #1A1A1A !important;
+  border-color: #2A2A2A !important;
+  color: #666666 !important;
+}
+
+.filter-section-hint {
+  font-size: 11px;
+  color: #888888;
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+}
+
 .filter-panel-actions {
   display: flex;
   gap: 8px;
@@ -1130,6 +1151,24 @@ textarea {
 }
 
 .screen-header-row .section-title { margin-bottom: 0; }
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #000000;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.radio-option input[type="radio"] {
+  width: auto;
+  margin: 0;
+  accent-color: #FF0B2E;
+  cursor: pointer;
+}
 
 .config-section-title {
   font-family: 'Oswald', sans-serif;

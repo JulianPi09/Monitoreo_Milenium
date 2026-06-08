@@ -105,16 +105,26 @@ function mentionCardHTML(m) {
   };
   const reachFmt = fmtNum(m.reach);
   const engFmt   = fmtNum(m.engagement);
-  const stats = (reachFmt != null || engFmt != null) ? `
+  const fmtCurrency = (n) => {
+    const num = Number(n);
+    if (n == null || isNaN(num) || num === 0) return null;
+    return `$${num.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+  const pubFmt = fmtCurrency(m.publicity);
+  const stats = (reachFmt != null || engFmt != null || pubFmt != null) ? `
     <table cellpadding="0" cellspacing="0" style="margin:10px 0 4px 0;border-collapse:collapse;">
       <tr>
         ${reachFmt != null ? `<td style="padding-right:24px;vertical-align:top;font-family:'Inter',sans-serif;">
           <span style="display:block;font-size:10px;font-weight:700;color:#888888;text-transform:uppercase;letter-spacing:0.6px;line-height:1.4;">ALCANCE</span>
           <span style="display:block;font-size:13px;color:#333333;font-weight:600;line-height:1.4;">${reachFmt}</span>
         </td>` : ''}
-        ${engFmt != null ? `<td style="vertical-align:top;font-family:'Inter',sans-serif;">
+        ${engFmt != null ? `<td style="padding-right:24px;vertical-align:top;font-family:'Inter',sans-serif;">
           <span style="display:block;font-size:10px;font-weight:700;color:#888888;text-transform:uppercase;letter-spacing:0.6px;line-height:1.4;">INTERACCIONES</span>
           <span style="display:block;font-size:13px;color:#333333;font-weight:600;line-height:1.4;">${engFmt}</span>
+        </td>` : ''}
+        ${pubFmt != null ? `<td style="vertical-align:top;font-family:'Inter',sans-serif;">
+          <span style="display:block;font-size:10px;font-weight:700;color:#888888;text-transform:uppercase;letter-spacing:0.6px;line-height:1.4;">PUBLICIDAD</span>
+          <span style="display:block;font-size:13px;color:#333333;font-weight:600;line-height:1.4;">${pubFmt}</span>
         </td>` : ''}
       </tr>
     </table>` : '';
