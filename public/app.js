@@ -9,11 +9,11 @@ let filterNoteTypes = new Set();
 let filterSections = new Set();
 
 const BRANDS_BY_COUNTRY = {
-  argentina: ['Logitech', 'Herbalife', 'IFX', 'AWS'],
-  colombia:  ['Makro', 'IFX', 'Burger King', 'Manpower'],
-  peru:      ['Manpower', 'Herbalife', 'Logitech'],
+  argentina: ['AWS', 'Herbalife', 'IFX', 'Logitech'],
   chile:     ['AWS', 'Logitech'],
-  mexico:    ['Siigo']
+  colombia:  ['Burger King', 'IFX', 'Makro', 'Manpower'],
+  mexico:    ['Siigo'],
+  peru:      ['Herbalife', 'Logitech', 'Manpower']
 };
 
 // ===== TÍTULO AUTOMÁTICO =====
