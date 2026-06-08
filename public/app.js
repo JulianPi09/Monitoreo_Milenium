@@ -74,6 +74,9 @@ document.getElementById('report-date').addEventListener('change', updateTitlePre
 // Inicializar selectores en cascada de país/marca
 onCountryChange();
 
+// Bloquear sidebar con "—" hasta completar el Paso 0
+setSidebarLocked(true, true);
+
 // ===== PARSEO TALKWALKER CSV =====
 
 // Botón "Parsear CSV" — re-procesa el último archivo subido
@@ -116,8 +119,8 @@ function readFileAsUTF8(file) {
     nameEl.textContent = `✓ ${file.name}`;
     nameEl.classList.remove('hidden');
     uploadZone.classList.add('has-file');
-    // Parsear automáticamente
-    runCSVParse(text);
+    // Habilitar el botón "Parsear CSV" — el parseo se dispara con el clic manual
+    document.getElementById('btn-parse').disabled = false;
   };
   reader.onerror = () => {
     alert('Error al leer el archivo. Intentá subirlo nuevamente.');
@@ -966,7 +969,7 @@ function escapeHTML(str) {
 // ===== NAVEGACIÓN DE PANTALLAS =====
 
 function showScreen(screen) {
-  ['report', 'brand-config', 'mailing', 'export', 'history'].forEach(s => {
+  ['step0', 'report', 'brand-config', 'mailing', 'export', 'history'].forEach(s => {
     const el = document.getElementById(`screen-${s}`);
     if (el) el.classList.toggle('hidden', s !== screen);
   });
@@ -980,11 +983,81 @@ function showScreen(screen) {
   if (newReportBtn) newReportBtn.classList.toggle('active', screen === 'report');
 
   const backBtn = document.getElementById('btn-back-to-report');
-  if (backBtn) backBtn.classList.toggle('hidden', screen === 'report');
+  if (backBtn) backBtn.classList.toggle('hidden', screen === 'report' || screen === 'step0');
 
   if (screen === 'brand-config') loadBrandConfigScreen();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===== PASO 0: SELECCIÓN DE PAÍS Y MARCA =====
+
+function onStep0CountryChange() {
+  const countryEl = document.getElementById('step0-country');
+  const brandEl = document.getElementById('step0-brand');
+  const brands = BRANDS_BY_COUNTRY[countryEl.value] || [];
+  brandEl.innerHTML = '<option value="" selected disabled>—</option>' +
+    brands.map(b => `<option value="${b.toLowerCase().replace(/[\s&]/g, '-')}">${b}</option>`).join('');
+  brandEl.disabled = brands.length === 0;
+  validateStep0();
+}
+
+function onStep0BrandChange() {
+  validateStep0();
+}
+
+function validateStep0() {
+  const countryEl = document.getElementById('step0-country');
+  const brandEl = document.getElementById('step0-brand');
+  const startBtn = document.getElementById('btn-step0-start');
+  startBtn.disabled = !(countryEl.value && brandEl.value);
+}
+
+function startSession() {
+  const step0CountryEl = document.getElementById('step0-country');
+  const step0BrandEl = document.getElementById('step0-brand');
+  if (!step0CountryEl.value || !step0BrandEl.value) return;
+
+  const sidebarCountryEl = document.getElementById('sidebar-country');
+  const sidebarBrandEl = document.getElementById('sidebar-brand');
+  sidebarCountryEl.value = step0CountryEl.value;
+  onCountryChange(); // repuebla el selector de marca del sidebar para el país elegido
+  sidebarBrandEl.value = step0BrandEl.value;
+  onBrandChange();
+
+  setSidebarLocked(true);
+  showScreen('report');
+}
+
+function setSidebarLocked(locked, placeholder) {
+  const countrySel = document.getElementById('sidebar-country');
+  const brandSel = document.getElementById('sidebar-brand');
+  const countryStatic = document.getElementById('sidebar-country-static');
+  const brandStatic = document.getElementById('sidebar-brand-static');
+
+  countrySel.classList.toggle('hidden', locked);
+  brandSel.classList.toggle('hidden', locked);
+  countryStatic.classList.toggle('hidden', !locked);
+  brandStatic.classList.toggle('hidden', !locked);
+
+  if (locked) {
+    countryStatic.textContent = placeholder ? '—' : (countrySel.options[countrySel.selectedIndex]?.text || '');
+    brandStatic.textContent   = placeholder ? '—' : (brandSel.options[brandSel.selectedIndex]?.text || '');
+  }
+}
+
+// ===== NUEVO REPORTE =====
+
+function onNewReportClick() {
+  document.getElementById('new-report-confirm').classList.remove('hidden');
+}
+
+function closeNewReportConfirm() {
+  document.getElementById('new-report-confirm').classList.add('hidden');
+}
+
+function confirmNewReport() {
+  location.reload();
 }
 
 function onCountryChange() {
