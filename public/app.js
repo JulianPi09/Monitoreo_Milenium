@@ -853,6 +853,7 @@ async function sendClipping() {
 
     if (res.ok && data.ok) {
       showStatus('send-status', 'success', data.message);
+      if (!isScheduled) await saveReportToHistory(title, recipients);
     } else {
       showStatus('send-status', 'error', data.error || 'Error desconocido.');
     }
@@ -988,6 +989,7 @@ function showScreen(screen) {
 
   if (screen === 'brand-config') loadBrandConfigScreen();
   if (screen === 'mailing') loadMailingScreen();
+  if (screen === 'history') loadHistoryScreen();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1073,12 +1075,14 @@ function onCountryChange() {
   updateScreenTitles();
   if (!document.getElementById('screen-brand-config').classList.contains('hidden')) loadBrandConfigScreen();
   if (!document.getElementById('screen-mailing').classList.contains('hidden')) loadMailingScreen();
+  if (!document.getElementById('screen-history').classList.contains('hidden')) loadHistoryScreen();
 }
 
 function onBrandChange() {
   updateScreenTitles();
   if (!document.getElementById('screen-brand-config').classList.contains('hidden')) loadBrandConfigScreen();
   if (!document.getElementById('screen-mailing').classList.contains('hidden')) loadMailingScreen();
+  if (!document.getElementById('screen-history').classList.contains('hidden')) loadHistoryScreen();
 }
 
 function updateScreenTitles() {
@@ -1455,4 +1459,170 @@ function showStatus(id, type, message) {
   el.textContent = message;
   el.classList.remove('hidden');
   el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ===== HISTORIAL DE REPORTES: persistencia en localStorage =====
+
+function getReportHistoryKey() {
+  const suffix = getBrandStorageSuffix();
+  return suffix ? `reportHistory_${suffix}` : null;
+}
+
+function getReportHistory() {
+  const key = getReportHistoryKey();
+  if (!key) return [];
+  try {
+    return JSON.parse(localStorage.getItem(key)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveReportHistory(records) {
+  const key = getReportHistoryKey();
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(records));
+}
+
+function formatDateTimeDMY(timestamp) {
+  const d = new Date(timestamp);
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Calcula el desglose de menciones por sección según las etiquetas configuradas para la marca activa.
+// Si no hay etiquetas configuradas, todas las menciones cuentan como "marca" (igual que el resto del reporte).
+function getMentionsSectionBreakdown(allMentions) {
+  const brandConfig = getActiveBrandTags();
+  const brandList  = parseTagList(brandConfig && brandConfig.brand);
+  const compList   = parseTagList(brandConfig && brandConfig.comp);
+  const sectorList = parseTagList(brandConfig && brandConfig.sector);
+
+  if (!brandList.length && !compList.length && !sectorList.length) {
+    return { marca: allMentions.length, comp: 0, sector: 0 };
+  }
+
+  const breakdown = { marca: 0, comp: 0, sector: 0 };
+  allMentions.forEach(m => {
+    const section = getMentionSection(m, brandConfig);
+    if (section === 'marca') breakdown.marca++;
+    else if (section === 'comp') breakdown.comp++;
+    else if (section === 'sector') breakdown.sector++;
+  });
+  return breakdown;
+}
+
+function formatMentionsSummary(record) {
+  const { total, marca, comp, sector } = record.menciones;
+  if (comp === 0 && sector === 0) return `${total} total`;
+  return `${total} total · Marca: ${marca} · Competencia: ${comp} · Sector: ${sector}`;
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function fetchReportPDFBase64(title) {
+  try {
+    const res = await fetch('/api/pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mentions, title, brandLogo: getActiveBrandLogo(), brandTags: getActiveBrandTags() })
+    });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await blobToBase64(blob);
+  } catch (err) {
+    return null;
+  }
+}
+
+async function saveReportToHistory(title, recipientsRaw) {
+  const key = getReportHistoryKey();
+  if (!key) return;
+
+  const destinatarios = parseCommaList(recipientsRaw);
+  const select = document.getElementById('recipients-list-select');
+  const listaUsada = (select && select.value) ? (select.options[select.selectedIndex]?.text || null) : null;
+
+  const breakdown = getMentionsSectionBreakdown(mentions);
+  const pdf = await fetchReportPDFBase64(title);
+
+  const record = {
+    id: `rh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    fecha: Date.now(),
+    menciones: { total: mentions.length, marca: breakdown.marca, comp: breakdown.comp, sector: breakdown.sector },
+    pdf,
+    destinatarios,
+    listaUsada
+  };
+
+  const records = getReportHistory();
+  records.unshift(record);
+  saveReportHistory(records);
+
+  if (!document.getElementById('screen-history').classList.contains('hidden')) loadHistoryScreen();
+}
+
+function loadHistoryScreen() {
+  const tbody = document.getElementById('history-table-body');
+  if (!tbody) return;
+  const records = getReportHistory();
+  if (records.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" class="table-empty">Aún no hay reportes enviados para esta marca</td></tr>';
+    return;
+  }
+  tbody.innerHTML = records.map(record => `
+    <tr>
+      <td>${formatDateTimeDMY(record.fecha)}</td>
+      <td>${formatMentionsSummary(record)}</td>
+      <td>
+        <div class="mailing-table-actions">
+          <button class="btn btn-sm" onclick="showHistoryRecipients('${record.id}')">Ver destinatarios</button>
+          <button class="btn btn-sm" onclick="downloadHistoryPDF('${record.id}')">Descargar PDF</button>
+          <button class="btn btn-sm" onclick="deleteHistoryRecord('${record.id}')">Eliminar</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function showHistoryRecipients(id) {
+  const record = getReportHistory().find(r => r.id === id);
+  if (!record) return;
+  const sourceLine = record.listaUsada ? `Lista: ${escapeHTML(record.listaUsada)}` : 'Ingresados manualmente';
+  const emailsList = record.destinatarios.map(escapeHTML).join('\n');
+  document.getElementById('recipients-modal-body').innerHTML = `
+    <div><strong>${sourceLine}</strong></div>
+    <div class="recipients-list">${emailsList}</div>
+  `;
+  document.getElementById('recipients-modal').classList.remove('hidden');
+}
+
+function closeRecipientsModal() {
+  document.getElementById('recipients-modal').classList.add('hidden');
+}
+
+function downloadHistoryPDF(id) {
+  const record = getReportHistory().find(r => r.id === id);
+  if (!record || !record.pdf) { alert('No se encontró el PDF de este reporte.'); return; }
+  const link = document.createElement('a');
+  link.href = `data:application/pdf;base64,${record.pdf}`;
+  link.download = `Reporte_${formatDateTimeDMY(record.fecha).replace(/[\/: ]/g, '-')}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+function deleteHistoryRecord(id) {
+  showConfirm('¿Eliminar este registro del historial?', () => {
+    const records = getReportHistory().filter(r => r.id !== id);
+    saveReportHistory(records);
+    loadHistoryScreen();
+  });
 }

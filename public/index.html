@@ -507,7 +507,7 @@
               <th>Acciones</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="history-table-body">
             <tr>
               <td colspan="3" class="table-empty">Aún no hay reportes enviados para esta marca</td>
             </tr>
@@ -527,6 +527,18 @@
         <button class="modal-close" onclick="closePreview()">✕</button>
       </div>
       <iframe id="preview-frame" class="preview-frame"></iframe>
+    </div>
+  </div>
+
+  <!-- MODAL VER DESTINATARIOS -->
+  <div id="recipients-modal" class="modal hidden">
+    <div class="modal-overlay" onclick="closeRecipientsModal()"></div>
+    <div class="modal-content modal-content-sm">
+      <div class="modal-header">
+        <span>Destinatarios</span>
+        <button class="modal-close" onclick="closeRecipientsModal()">✕</button>
+      </div>
+      <div class="modal-body" id="recipients-modal-body"></div>
     </div>
   </div>
 

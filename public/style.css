@@ -1163,6 +1163,35 @@ textarea {
   width: 100%;
 }
 
+.modal-content-sm {
+  width: 90vw;
+  max-width: 480px;
+  height: auto;
+  max-height: 80vh;
+}
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #1A1A1A;
+  line-height: 1.6;
+}
+
+.modal-body strong { font-weight: 600; }
+
+.modal-body .recipients-list {
+  margin-top: 10px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: #F7F7F7;
+  border: 1px solid #E0E0E0;
+  border-radius: 4px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
 /* ===== PAGINACIÓN ===== */
 .pagination {
   display: flex;
