@@ -269,12 +269,14 @@
 
         <!-- Sección 1: Encabezado del reporte -->
         <h3 class="config-section-title">Encabezado del reporte</h3>
-        <div class="header-preview">
+        <div class="header-preview" id="brand-header-preview">
           <img src="/logo/Logo%20Horizontal.%20Negativo.png" alt="Milenium Group" class="header-preview-logo" />
-          <div class="brand-logo-placeholder">
-            <div class="brand-logo-box">Logo de la marca</div>
-            <button class="btn btn-sm" style="margin-top:6px;">Cargar logo</button>
-          </div>
+          <img id="brand-logo-img" class="brand-logo-img hidden" alt="Logo de la marca" />
+        </div>
+        <div class="field-group">
+          <label>Logo de la marca</label>
+          <button class="btn btn-sm" id="btn-upload-logo">Cargar logo</button>
+          <input type="file" id="brand-logo-input" accept="image/png,image/jpeg,image/svg+xml" style="display:none" />
         </div>
 
         <!-- Sección 2: Etiquetas por sección -->
@@ -295,7 +297,7 @@
           <p class="field-hint">Ingresá las etiquetas de TalkWalker separadas por coma. Ej: SOV Makro/Makro, SOV Makro/Grupo Éxito</p>
         </div>
         <div class="save-btn-row">
-          <button class="btn btn-primary" onclick="saveConfigSection('cfg-save-1')">Guardar</button>
+          <button class="btn btn-primary" onclick="saveTagsConfig()">Guardar</button>
           <span class="config-save-confirm" id="cfg-save-1">✓ Guardado</span>
         </div>
 

@@ -151,6 +151,7 @@ function runCSVParse(rawText) {
     const iSentiment  = col('sentiment');
     const iReach      = col('reach');
     const iEngagement = col('engagement');
+    const iTagsCustomer = col('tags_customer');
 
     // Validar que al menos title o url estén presentes
     if (iTitle === -1 && iUrl === -1) {
@@ -193,6 +194,7 @@ function runCSVParse(rawText) {
           noteType:    'espontanea',
           reach:       (!isNaN(reach) && reach !== null)           ? reach      : null,
           engagement:  (!isNaN(engagement) && engagement !== null) ? engagement : null,
+          tagsCustomer: get(row, iTagsCustomer),
         };
       });
 
@@ -676,7 +678,7 @@ async function sendClipping() {
   btn.disabled = true;
   btn.textContent = isScheduled ? 'Programando...' : 'Enviando...';
 
-  const payload = { mentions, recipients, title, subject, smtpConfig };
+  const payload = { mentions, recipients, title, subject, smtpConfig, brandLogo: getActiveBrandLogo(), brandTags: getActiveBrandTags() };
   const endpoint = isScheduled ? '/api/schedule' : '/api/send';
   if (isScheduled) payload.scheduledAt = scheduledAt;
 
@@ -715,7 +717,7 @@ async function downloadPDF() {
     const res = await fetch('/api/pdf', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mentions, title })
+      body: JSON.stringify({ mentions, title, brandLogo: getActiveBrandLogo(), brandTags: getActiveBrandTags() })
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -746,7 +748,7 @@ async function previewEmail() {
     const res = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mentions, title })
+      body: JSON.stringify({ mentions, title, brandLogo: getActiveBrandLogo(), brandTags: getActiveBrandTags() })
     });
     const html = await res.text();
     const frame = document.getElementById('preview-frame');
@@ -816,6 +818,8 @@ function showScreen(screen) {
   const backBtn = document.getElementById('btn-back-to-report');
   if (backBtn) backBtn.classList.toggle('hidden', screen === 'report');
 
+  if (screen === 'brand-config') loadBrandConfigScreen();
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -828,10 +832,12 @@ function onCountryChange() {
     .map(b => `<option value="${b.toLowerCase().replace(/[\s&]/g, '-')}">${b}</option>`)
     .join('');
   updateScreenTitles();
+  if (!document.getElementById('screen-brand-config').classList.contains('hidden')) loadBrandConfigScreen();
 }
 
 function onBrandChange() {
   updateScreenTitles();
+  if (!document.getElementById('screen-brand-config').classList.contains('hidden')) loadBrandConfigScreen();
 }
 
 function updateScreenTitles() {
@@ -904,6 +910,89 @@ function saveConfigSection(confirmId) {
   el.classList.add('visible');
   setTimeout(() => el.classList.remove('visible'), 2500);
 }
+
+// ===== CONFIGURACIÓN DE MARCA: persistencia en localStorage =====
+
+function getBrandStorageSuffix() {
+  const countryEl = document.getElementById('sidebar-country');
+  const brandEl = document.getElementById('sidebar-brand');
+  if (!countryEl || !brandEl || !countryEl.value || !brandEl.value) return null;
+  return `${countryEl.value}_${brandEl.value}`;
+}
+
+// Logo de la marca activa (país/marca del sidebar), en base64, para incluir en el encabezado del reporte
+function getActiveBrandLogo() {
+  const suffix = getBrandStorageSuffix();
+  if (!suffix) return null;
+  return localStorage.getItem(`brandLogo_${suffix}`);
+}
+
+// Etiquetas configuradas para la marca activa (país/marca del sidebar), para agrupar las menciones del reporte
+function getActiveBrandTags() {
+  const suffix = getBrandStorageSuffix();
+  if (!suffix) return null;
+  const saved = localStorage.getItem(`brandConfig_${suffix}`);
+  return saved ? JSON.parse(saved) : null;
+}
+
+function saveTagsConfig() {
+  const suffix = getBrandStorageSuffix();
+  if (!suffix) return;
+  const data = {
+    brand:  document.getElementById('cfg-tags-brand').value,
+    comp:   document.getElementById('cfg-tags-comp').value,
+    sector: document.getElementById('cfg-tags-sector').value
+  };
+  localStorage.setItem(`brandConfig_${suffix}`, JSON.stringify(data));
+  saveConfigSection('cfg-save-1');
+}
+
+function showBrandLogoPreview(dataUrl) {
+  const img = document.getElementById('brand-logo-img');
+  const headerPreview = document.getElementById('brand-header-preview');
+  if (!img || !headerPreview) return;
+  if (dataUrl) {
+    img.src = dataUrl;
+    img.classList.remove('hidden');
+    headerPreview.classList.add('has-brand-logo');
+  } else {
+    img.removeAttribute('src');
+    img.classList.add('hidden');
+    headerPreview.classList.remove('has-brand-logo');
+  }
+}
+
+function handleBrandLogoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const suffix = getBrandStorageSuffix();
+  if (!suffix) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const dataUrl = ev.target.result;
+    localStorage.setItem(`brandLogo_${suffix}`, dataUrl);
+    showBrandLogoPreview(dataUrl);
+  };
+  reader.readAsDataURL(file);
+}
+
+function loadBrandConfigScreen() {
+  const suffix = getBrandStorageSuffix();
+  if (!suffix) return;
+
+  const savedTags = localStorage.getItem(`brandConfig_${suffix}`);
+  const tags = savedTags ? JSON.parse(savedTags) : { brand: '', comp: '', sector: '' };
+  document.getElementById('cfg-tags-brand').value = tags.brand || '';
+  document.getElementById('cfg-tags-comp').value = tags.comp || '';
+  document.getElementById('cfg-tags-sector').value = tags.sector || '';
+
+  showBrandLogoPreview(localStorage.getItem(`brandLogo_${suffix}`));
+}
+
+document.getElementById('btn-upload-logo').addEventListener('click', () => {
+  document.getElementById('brand-logo-input').click();
+});
+document.getElementById('brand-logo-input').addEventListener('change', handleBrandLogoUpload);
 
 function showStatus(id, type, message) {
   const el = document.getElementById(id);

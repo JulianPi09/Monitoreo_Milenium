@@ -41,6 +41,143 @@ function noteTypeLabel(noteType) {
   return 'Espontánea';
 }
 
+// ===== AGRUPACIÓN DE MENCIONES POR ETIQUETAS DE MARCA =====
+
+function parseTagList(str) {
+  return (str || '')
+    .split(/[,;|]/)
+    .map(t => t.trim())
+    .filter(Boolean);
+}
+
+function matchesAnyTag(mentionTags, configuredTags) {
+  if (!configuredTags.length) return false;
+  return mentionTags.some(mt => configuredTags.some(ct => mt.toLowerCase() === ct.toLowerCase()));
+}
+
+// Agrupa las menciones en Marca / Competencia / Sector / Sin sección según
+// las etiquetas configuradas. Devuelve null si no hay etiquetas configuradas
+// (en cuyo caso el reporte se arma sin secciones, como antes).
+function groupMentionsBySection(mentions, brandTags) {
+  const brandList  = parseTagList(brandTags && brandTags.brand);
+  const compList   = parseTagList(brandTags && brandTags.comp);
+  const sectorList = parseTagList(brandTags && brandTags.sector);
+
+  if (!brandList.length && !compList.length && !sectorList.length) return null;
+
+  const sections = { brand: [], comp: [], sector: [], none: [] };
+  mentions.forEach(m => {
+    const mentionTags = parseTagList(m.tagsCustomer);
+    if (matchesAnyTag(mentionTags, brandList))            sections.brand.push(m);
+    else if (matchesAnyTag(mentionTags, compList))        sections.comp.push(m);
+    else if (matchesAnyTag(mentionTags, sectorList))      sections.sector.push(m);
+    else                                                   sections.none.push(m);
+  });
+  return sections;
+}
+
+function sectionHeaderRowHTML(label) {
+  return `<tr><td style="background-color:#555555;padding:10px 40px;">
+    <p style="margin:0;font-size:16px;font-weight:700;color:#FFFFFF;font-family:'Inter',sans-serif;text-transform:uppercase;letter-spacing:1px;">${label}</p>
+  </td></tr>`;
+}
+
+function spacerRowHTML(height) {
+  return `<tr><td style="height:${height}px;line-height:${height}px;font-size:1px;">&nbsp;</td></tr>`;
+}
+
+function cardsRowHTML(cardsHTML) {
+  return `<tr><td style="padding:0 40px;">${cardsHTML}</td></tr>`;
+}
+
+function mentionCardHTML(m) {
+  const color = sentimentColor(m.sentiment);
+  const label = sentimentLabel(m.sentiment);
+  const badgeBg = color;
+  const noteTypeLbl = m.noteType ? noteTypeLabel(m.noteType) : null;
+  const date = m.date ? `<p style="margin:0 0 6px 0;font-size:12px;color:#888888;font-family:'Inter',sans-serif;">${m.date}</p>` : '';
+  const source = m.source ? `<p style="margin:0 0 4px 0;font-size:12px;font-weight:600;color:#FF0B2E;font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">${m.source}</p>` : '';
+  const desc = m.description ? `<p style="margin:8px 0 0 0;font-size:14px;color:#333333;font-family:'Inter',sans-serif;line-height:1.5;">${m.description}</p>` : '';
+  const fmtNum = (n) => {
+    const num = Number(n);
+    if (n == null || n === '' || isNaN(num)) return null;
+    return num.toLocaleString('es-AR');
+  };
+  const reachFmt = fmtNum(m.reach);
+  const engFmt   = fmtNum(m.engagement);
+  const stats = (reachFmt != null || engFmt != null) ? `
+    <table cellpadding="0" cellspacing="0" style="margin:10px 0 4px 0;border-collapse:collapse;">
+      <tr>
+        ${reachFmt != null ? `<td style="padding-right:24px;vertical-align:top;font-family:'Inter',sans-serif;">
+          <span style="display:block;font-size:10px;font-weight:700;color:#888888;text-transform:uppercase;letter-spacing:0.6px;line-height:1.4;">ALCANCE</span>
+          <span style="display:block;font-size:13px;color:#333333;font-weight:600;line-height:1.4;">${reachFmt}</span>
+        </td>` : ''}
+        ${engFmt != null ? `<td style="vertical-align:top;font-family:'Inter',sans-serif;">
+          <span style="display:block;font-size:10px;font-weight:700;color:#888888;text-transform:uppercase;letter-spacing:0.6px;line-height:1.4;">INTERACCIONES</span>
+          <span style="display:block;font-size:13px;color:#333333;font-weight:600;line-height:1.4;">${engFmt}</span>
+        </td>` : ''}
+      </tr>
+    </table>` : '';
+  const link = m.link ? `<a href="${m.link}" style="display:inline-block;margin-top:10px;font-size:12px;color:#FF0B2E;font-family:'Inter',sans-serif;text-decoration:none;">Ver nota completa →</a>` : '';
+
+  return `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:0;border-collapse:collapse;border-bottom:1px solid #E0E0E0;">
+      <tr>
+        <td style="width:3px;background-color:${color};border-radius:2px 0 0 2px;">&nbsp;</td>
+        <td style="background-color:#FAFAFA;padding:16px 20px;position:relative;border-radius:0 4px 4px 0;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>
+                ${source}
+                ${date}
+                <p style="margin:0 0 6px 0;font-size:16px;font-weight:600;color:#000000;font-family:'Oswald',sans-serif;line-height:1.3;">${m.title}</p>
+                ${desc}
+                ${stats}
+                ${link}
+              </td>
+              <td style="width:100px;text-align:right;vertical-align:top;padding-left:12px;">
+                <span style="display:inline-block;background-color:${badgeBg};color:#000000;font-size:11px;font-weight:700;font-family:'Inter',sans-serif;padding:3px 8px;border-radius:3px;white-space:nowrap;">${label}</span>
+                ${noteTypeLbl ? `<br><span style="display:inline-block;margin-top:4px;background-color:#333333;color:#FFFFFF;font-size:10px;font-weight:700;font-family:'Inter',sans-serif;padding:3px 8px;border-radius:3px;white-space:nowrap;">${noteTypeLbl}</span>` : ''}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>`;
+}
+
+// Arma las filas de la sección de menciones, agrupadas por etiquetas de marca
+// si hay configuración disponible; si no, todas las menciones en una sola fila como antes.
+function buildMentionsSectionHTML(sortedMentions, brandTags) {
+  const grouped = groupMentionsBySection(sortedMentions, brandTags);
+
+  if (!grouped) {
+    return `<tr><td style="padding:24px 40px 32px 40px;">${sortedMentions.map(mentionCardHTML).join('')}</td></tr>`;
+  }
+
+  const rows = [spacerRowHTML(24)];
+  let firstBlockRendered = false;
+
+  [
+    { items: grouped.brand,  label: 'MARCA' },
+    { items: grouped.comp,   label: 'COMPETENCIA' },
+    { items: grouped.sector, label: 'SECTOR' }
+  ].forEach(({ items, label }) => {
+    if (!items.length) return;
+    if (firstBlockRendered) rows.push(spacerRowHTML(24));
+    rows.push(sectionHeaderRowHTML(label));
+    rows.push(cardsRowHTML(items.map(mentionCardHTML).join('')));
+    firstBlockRendered = true;
+  });
+
+  if (grouped.none.length) {
+    rows.push(cardsRowHTML(grouped.none.map(mentionCardHTML).join('')));
+  }
+
+  rows.push(spacerRowHTML(32));
+  return rows.join('');
+}
+
 // Genera un Buffer PDF a partir de HTML usando Puppeteer/Chromium
 async function buildPDF(html) {
   const browser = await puppeteer.launch({
@@ -74,70 +211,27 @@ function pdfFilename(title) {
   return `Clipping_${safe}.pdf`;
 }
 
-function buildEmailHTML(mentions, title) {
+function buildEmailHTML(mentions, title, brandLogo, brandTags) {
   const logoBase64 = getLogoBase64();
   const logoSrc = logoBase64
     ? `data:image/png;base64,${logoBase64}`
     : '';
 
+  const mileniumLogoHTML = logoSrc
+    ? `<img src="${logoSrc}" alt="Milenium Group" style="height:42px;display:block;" />`
+    : `<p style="color:#FFFFFF;font-family:'Oswald',sans-serif;font-size:22px;font-weight:600;margin:0;">MILENIUM GROUP</p>`;
+
+  const headerHTML = brandLogo
+    ? `<table width="100%" cellpadding="0" cellspacing="0"><tr>
+         <td align="left" valign="middle">${mileniumLogoHTML}</td>
+         <td align="right" valign="middle"><img src="${brandLogo}" alt="Logo de la marca" style="height:42px;width:auto;display:block;margin-left:auto;" /></td>
+       </tr></table>`
+    : `<div style="text-align:center;">${mileniumLogoHTML.replace('display:block;', 'display:block;margin:0 auto;')}</div>`;
+
   // Ordenar de mayor a menor engagement (nulls al final)
   const sorted = [...mentions].sort((a, b) => (b.engagement ?? -1) - (a.engagement ?? -1));
 
-  const mentionCards = sorted.map(m => {
-    const color = sentimentColor(m.sentiment);
-    const label = sentimentLabel(m.sentiment);
-    const badgeBg = color;
-    const noteTypeLbl = m.noteType ? noteTypeLabel(m.noteType) : null;
-    const date = m.date ? `<p style="margin:0 0 6px 0;font-size:12px;color:#888888;font-family:'Inter',sans-serif;">${m.date}</p>` : '';
-    const source = m.source ? `<p style="margin:0 0 4px 0;font-size:12px;font-weight:600;color:#FF0B2E;font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.5px;">${m.source}</p>` : '';
-    const desc = m.description ? `<p style="margin:8px 0 0 0;font-size:14px;color:#333333;font-family:'Inter',sans-serif;line-height:1.5;">${m.description}</p>` : '';
-    const fmtNum = (n) => {
-      const num = Number(n);
-      if (n == null || n === '' || isNaN(num)) return null;
-      return num.toLocaleString('es-AR');
-    };
-    const reachFmt = fmtNum(m.reach);
-    const engFmt   = fmtNum(m.engagement);
-    const stats = (reachFmt != null || engFmt != null) ? `
-      <table cellpadding="0" cellspacing="0" style="margin:10px 0 4px 0;border-collapse:collapse;">
-        <tr>
-          ${reachFmt != null ? `<td style="padding-right:24px;vertical-align:top;font-family:'Inter',sans-serif;">
-            <span style="display:block;font-size:10px;font-weight:700;color:#888888;text-transform:uppercase;letter-spacing:0.6px;line-height:1.4;">ALCANCE</span>
-            <span style="display:block;font-size:13px;color:#333333;font-weight:600;line-height:1.4;">${reachFmt}</span>
-          </td>` : ''}
-          ${engFmt != null ? `<td style="vertical-align:top;font-family:'Inter',sans-serif;">
-            <span style="display:block;font-size:10px;font-weight:700;color:#888888;text-transform:uppercase;letter-spacing:0.6px;line-height:1.4;">INTERACCIONES</span>
-            <span style="display:block;font-size:13px;color:#333333;font-weight:600;line-height:1.4;">${engFmt}</span>
-          </td>` : ''}
-        </tr>
-      </table>` : '';
-    const link = m.link ? `<a href="${m.link}" style="display:inline-block;margin-top:10px;font-size:12px;color:#FF0B2E;font-family:'Inter',sans-serif;text-decoration:none;">Ver nota completa →</a>` : '';
-
-    return `
-      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:0;border-collapse:collapse;border-bottom:1px solid #E0E0E0;">
-        <tr>
-          <td style="width:3px;background-color:${color};border-radius:2px 0 0 2px;">&nbsp;</td>
-          <td style="background-color:#FAFAFA;padding:16px 20px;position:relative;border-radius:0 4px 4px 0;">
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td>
-                  ${source}
-                  ${date}
-                  <p style="margin:0 0 6px 0;font-size:16px;font-weight:600;color:#000000;font-family:'Oswald',sans-serif;line-height:1.3;">${m.title}</p>
-                  ${desc}
-                  ${stats}
-                  ${link}
-                </td>
-                <td style="width:100px;text-align:right;vertical-align:top;padding-left:12px;">
-                  <span style="display:inline-block;background-color:${badgeBg};color:#000000;font-size:11px;font-weight:700;font-family:'Inter',sans-serif;padding:3px 8px;border-radius:3px;white-space:nowrap;">${label}</span>
-                  ${noteTypeLbl ? `<br><span style="display:inline-block;margin-top:4px;background-color:#333333;color:#FFFFFF;font-size:10px;font-weight:700;font-family:'Inter',sans-serif;padding:3px 8px;border-radius:3px;white-space:nowrap;">${noteTypeLbl}</span>` : ''}
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>`;
-  }).join('');
+  const mentionsSectionHTML = buildMentionsSectionHTML(sorted, brandTags);
 
   const reportTitle = title || 'Clipping de Medios';
   const dateStr = new Date().toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -158,8 +252,8 @@ function buildEmailHTML(mentions, title) {
 
         <!-- HEADER -->
         <tr>
-          <td style="background-color:#000000;padding:28px 40px;text-align:center;">
-            ${logoSrc ? `<img src="${logoSrc}" alt="Milenium Group" style="height:42px;display:block;margin:0 auto;" />` : `<p style="color:#FFFFFF;font-family:'Oswald',sans-serif;font-size:22px;font-weight:600;margin:0;">MILENIUM GROUP</p>`}
+          <td style="background-color:#000000;padding:28px 40px;">
+            ${headerHTML}
           </td>
         </tr>
 
@@ -221,11 +315,7 @@ function buildEmailHTML(mentions, title) {
         </tr>
 
         <!-- MENCIONES -->
-        <tr>
-          <td style="padding:24px 40px 32px 40px;">
-            ${mentionCards}
-          </td>
-        </tr>
+        ${mentionsSectionHTML}
 
         <!-- FOOTER -->
         <tr>
@@ -245,7 +335,7 @@ function buildEmailHTML(mentions, title) {
 
 // Endpoint: enviar clipping ahora
 app.post('/api/send', async (req, res) => {
-  const { mentions, recipients, title, subject, smtpConfig } = req.body;
+  const { mentions, recipients, title, subject, smtpConfig, brandLogo, brandTags } = req.body;
 
   if (!mentions || !recipients || !smtpConfig) {
     return res.status(400).json({ error: 'Faltan datos requeridos.' });
@@ -264,7 +354,7 @@ app.post('/api/send', async (req, res) => {
       }
     });
 
-    const html = buildEmailHTML(mentions, title);
+    const html = buildEmailHTML(mentions, title, brandLogo, brandTags);
 
     // Generar PDF adjunto
     let attachments = [];
@@ -293,7 +383,7 @@ app.post('/api/send', async (req, res) => {
 
 // Endpoint: programar envío
 app.post('/api/schedule', (req, res) => {
-  const { mentions, recipients, title, subject, smtpConfig, scheduledAt } = req.body;
+  const { mentions, recipients, title, subject, smtpConfig, scheduledAt, brandLogo, brandTags } = req.body;
   const emailSubject = subject || `[Clipping de Medios] ${title || 'Clipping de Medios'}`;
 
   if (!scheduledAt) {
@@ -313,7 +403,7 @@ app.post('/api/schedule', (req, res) => {
         secure: smtpConfig.port == 465,
         auth: { user: smtpConfig.user, pass: smtpConfig.pass }
       });
-      const html = buildEmailHTML(mentions, title);
+      const html = buildEmailHTML(mentions, title, brandLogo, brandTags);
       await transporter.sendMail({
         from: `"Milenium Group Clipping" <${smtpConfig.user}>`,
         to: recipients,
@@ -331,16 +421,16 @@ app.post('/api/schedule', (req, res) => {
 
 // Endpoint: previsualizar email HTML
 app.post('/api/preview', (req, res) => {
-  const { mentions, title } = req.body;
-  const html = buildEmailHTML(mentions || [], title);
+  const { mentions, title, brandLogo, brandTags } = req.body;
+  const html = buildEmailHTML(mentions || [], title, brandLogo, brandTags);
   res.send(html);
 });
 
 // Endpoint: descargar PDF
 app.post('/api/pdf', async (req, res) => {
-  const { mentions, title } = req.body;
+  const { mentions, title, brandLogo, brandTags } = req.body;
   try {
-    const html = buildEmailHTML(mentions || [], title);
+    const html = buildEmailHTML(mentions || [], title, brandLogo, brandTags);
     console.log('[pdf] Generando PDF...');
     const pdfBuffer = await buildPDF(html);
     const filename = pdfFilename(title);
