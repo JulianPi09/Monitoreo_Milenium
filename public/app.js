@@ -1120,7 +1120,7 @@ function updateScreenTitles() {
   const brandName = brandEl.options[brandEl.selectedIndex]?.text || '';
   const suffix = (countryName && brandName) ? ` — ${countryName} · ${brandName}` : '';
   const screens = {
-    'history-title':      'Historial de reportes',
+    'history-title':      'Historial de envíos',
     'brand-config-title': 'Configuración de marca',
     'mailing-title':      'Listas de correo',
     'export-title':       'Exportar datos',
@@ -1603,9 +1603,9 @@ function getMentionsSectionBreakdown(allMentions) {
 }
 
 function formatMentionsSummary(record) {
-  const { total, marca, comp, sector } = record.menciones;
-  if (comp === 0 && sector === 0) return `${total} total`;
-  return `${total} total · Marca: ${marca} · Competencia: ${comp} · Sector: ${sector}`;
+  if (!record.menciones) return '—';
+  const { marca = 0, comp = 0 } = record.menciones;
+  return `Marca: ${marca} · Competencia: ${comp}`;
 }
 
 function blobToBase64(blob) {
@@ -1646,6 +1646,7 @@ async function saveReportToHistory(title, recipientsRaw) {
   const record = {
     id: `rh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     fecha: Date.now(),
+    tipo: 'clipping',
     menciones: { total: mentions.length, marca: breakdown.marca, comp: breakdown.comp, sector: breakdown.sector },
     pdf,
     destinatarios,
@@ -1664,22 +1665,29 @@ function loadHistoryScreen() {
   if (!tbody) return;
   const records = getReportHistory();
   if (records.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="3" class="table-empty">Aún no hay reportes enviados para esta marca</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="table-empty">Aún no hay envíos registrados para esta marca</td></tr>';
     return;
   }
-  tbody.innerHTML = records.map(record => `
+  tbody.innerHTML = records.map(record => {
+    const esDash = record.tipo === 'dashboard';
+    const tipoLabel = esDash ? 'Dashboard' : 'Clipping';
+    const accionDescarga = esDash
+      ? `<button class="btn btn-sm" onclick="downloadHistoryHTML('${record.id}')">Descargar HTML</button>`
+      : `<button class="btn btn-sm" onclick="downloadHistoryPDF('${record.id}')">Descargar PDF</button>`;
+    return `
     <tr>
       <td>${formatDateTimeDMY(record.fecha)}</td>
+      <td>${tipoLabel}</td>
       <td>${formatMentionsSummary(record)}</td>
       <td>
         <div class="mailing-table-actions">
           <button class="btn btn-sm" onclick="showHistoryRecipients('${record.id}')">Ver destinatarios</button>
-          <button class="btn btn-sm" onclick="downloadHistoryPDF('${record.id}')">Descargar PDF</button>
+          ${accionDescarga}
           <button class="btn btn-sm" onclick="deleteHistoryRecord('${record.id}')">Eliminar</button>
         </div>
       </td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 }
 
 function showHistoryRecipients(id) {
@@ -1715,6 +1723,46 @@ function deleteHistoryRecord(id) {
     saveReportHistory(records);
     loadHistoryScreen();
   });
+}
+
+function downloadHistoryHTML(id) {
+  const record = getReportHistory().find(r => r.id === id);
+  if (!record || !record.htmlAdjunto) { alert('No se encontró el HTML de este dashboard.'); return; }
+  const blob = new Blob([record.htmlAdjunto], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `Dashboard_${formatDateTimeDMY(record.fecha).replace(/[\/: ]/g, '-')}.html`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function saveDashboardToHistory(recipientsRaw, standaloneHtml) {
+  const key = getReportHistoryKey();
+  if (!key) return;
+  const destinatarios = parseCommaList(recipientsRaw);
+  const select = document.getElementById('dash-recipients-list');
+  const listaUsada = (select && select.value) ? (select.options[select.selectedIndex]?.text || null) : null;
+  const raw = _getDashRawData();
+  const bm = _getBrandMentions(raw);
+  const brandConfig = getActiveBrandTags();
+  let compCount = 0;
+  raw.forEach(m => { if (getMentionSection(m, brandConfig) === 'comp') compCount++; });
+  const record = {
+    id: `rh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    fecha: Date.now(),
+    tipo: 'dashboard',
+    menciones: { marca: bm.length, comp: compCount },
+    htmlAdjunto: standaloneHtml,
+    destinatarios,
+    listaUsada
+  };
+  const records = getReportHistory();
+  records.unshift(record);
+  saveReportHistory(records);
+  if (!document.getElementById('screen-history').classList.contains('hidden')) loadHistoryScreen();
 }
 
 // ===== MENCIONES GUARDADAS: persistencia en localStorage =====
@@ -2538,6 +2586,7 @@ async function sendDashboard() {
     const data = await res.json();
     if (res.ok && data.ok) {
       showStatus('dash-send-status', 'success', data.message);
+      if (!isScheduled) saveDashboardToHistory(recipients, standaloneHtml);
     } else {
       showStatus('dash-send-status', 'error', data.error || 'Error desconocido.');
     }
