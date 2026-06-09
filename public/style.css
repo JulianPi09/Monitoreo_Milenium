@@ -1570,6 +1570,69 @@ textarea:disabled {
 
 .dash-tab:not(.active):hover { background: #F5F5F5; }
 
+.dash-send-btn {
+  padding: 7px 16px;
+  border-radius: 4px;
+  border: 1.5px solid #AAAAAA;
+  background: #FFFFFF;
+  color: #333333;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.dash-send-btn:hover { background: #F0F0F0; }
+
+.dash-send-panel {
+  background: #F9F9F9;
+  border: 1.5px solid #E0E0E0;
+  border-radius: 6px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.dash-send-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #F2F2F2;
+  border-bottom: 1px solid #E0E0E0;
+}
+
+.dash-send-panel-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #000000;
+}
+
+.dash-send-close {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #888888;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.dash-send-close:hover { color: #333333; }
+
+.dash-send-panel-body {
+  padding: 20px;
+  max-width: 760px;
+}
+
+.dash-send-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
 .dash-saved-select {
   padding: 7px 12px;
   border: 1.5px solid #CCCCCC;

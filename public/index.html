@@ -40,6 +40,10 @@
       <div class="sidebar-static-value hidden" id="sidebar-brand-static"></div>
     </div>
     <nav class="sidebar-nav">
+      <button class="sidebar-nav-item" id="nav-reporte" onclick="showScreen('report')">
+        <span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="15" viewBox="0 0 12 15" fill="currentColor" style="display:block;margin:auto;"><path fill-rule="evenodd" d="M1 0a1 1 0 00-1 1v13a1 1 0 001 1h10a1 1 0 001-1V4L8 0H1zm7 1.5L11 4.5H8V1.5zM3 7h6v1H3V7zm0 2.5h6v1H3v-1zm0 2.5h4v1H3V12z"/></svg></span>
+        <span>Reporte</span>
+      </button>
       <button class="sidebar-nav-item" id="nav-dashboard" onclick="showScreen('dashboard')">
         <span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15" fill="currentColor" style="display:block;margin:auto;"><rect x="1" y="8" width="3" height="6" rx="1"/><rect x="6" y="5" width="3" height="9" rx="1"/><rect x="11" y="2" width="3" height="12" rx="1"/></svg></span>
         <span>Dashboard</span>
@@ -331,6 +335,69 @@
             <select class="dash-saved-select hidden" id="dash-saved-select" onchange="onDashSavedSelect()">
               <option value="">Seleccionar guardado...</option>
             </select>
+            <button class="dash-send-btn" onclick="toggleDashSendPanel()">✉ Enviar por mail</button>
+          </div>
+        </div>
+
+        <!-- Panel de envío por mail -->
+        <div id="dash-send-panel" class="dash-send-panel hidden">
+          <div class="dash-send-panel-header">
+            <span class="dash-send-panel-title">Enviar dashboard por email</span>
+            <button class="dash-send-close" onclick="closeDashSendPanel()">✕</button>
+          </div>
+          <div class="dash-send-panel-body">
+            <div class="field-group">
+              <label for="dash-email-subject">Asunto del email</label>
+              <input type="text" id="dash-email-subject" placeholder="[Dashboard] Marca · fecha" />
+            </div>
+            <div class="field-group">
+              <label for="dash-recipients">Destinatarios <span class="hint">separados por coma</span></label>
+              <select id="dash-recipients-list" class="recipients-list-select" onchange="onDashRecipientsListSelect()">
+                <option value="">Seleccionar lista guardada...</option>
+              </select>
+              <input type="text" id="dash-recipients" placeholder="email1@ejemplo.com, email2@ejemplo.com" />
+            </div>
+            <div class="smtp-section">
+              <button class="smtp-toggle" onclick="toggleDashSmtp()">
+                <span>⚙ Configuración SMTP</span>
+                <span class="toggle-arrow" id="dash-toggle-arrow">▼</span>
+              </button>
+              <div class="smtp-fields hidden" id="dash-smtp-fields">
+                <p class="smtp-hint">Necesitás un servidor SMTP para enviar los emails. Si usás Gmail, activá "Contraseñas de aplicación" en tu cuenta Google.</p>
+                <div class="smtp-grid">
+                  <div class="field-group">
+                    <label for="dash-smtp-host">Servidor SMTP</label>
+                    <input type="text" id="dash-smtp-host" placeholder="smtp.gmail.com" />
+                  </div>
+                  <div class="field-group">
+                    <label for="dash-smtp-port">Puerto</label>
+                    <input type="number" id="dash-smtp-port" placeholder="587" value="587" />
+                  </div>
+                  <div class="field-group">
+                    <label for="dash-smtp-user">Email remitente</label>
+                    <input type="email" id="dash-smtp-user" placeholder="tu@email.com" />
+                  </div>
+                  <div class="field-group">
+                    <label for="dash-smtp-pass">Contraseña / App password</label>
+                    <input type="password" id="dash-smtp-pass" placeholder="••••••••••••" />
+                  </div>
+                </div>
+                <button class="btn btn-sm" onclick="saveDashSmtpConfig()">Guardar configuración</button>
+                <span class="save-confirm hidden" id="dash-smtp-saved">✓ Guardado</span>
+              </div>
+            </div>
+            <div class="field-group" style="margin-top:16px;">
+              <label for="dash-schedule-at">
+                <input type="checkbox" id="dash-schedule-checkbox" onchange="toggleDashSchedule()" />
+                Programar envío para después
+              </label>
+              <input type="datetime-local" id="dash-schedule-at" class="hidden" style="margin-top:8px;" />
+            </div>
+            <div class="dash-send-actions">
+              <button class="btn btn-secondary" onclick="previewDashboard()">Vista previa del dashboard</button>
+              <button class="btn btn-primary" id="dash-btn-send" onclick="sendDashboard()">Enviar dashboard</button>
+            </div>
+            <div id="dash-send-status" class="send-status hidden"></div>
           </div>
         </div>
 
@@ -410,7 +477,7 @@
               <div class="dash-col-left">
                 <div class="dash-metrics dash-metrics-3">
                   <div class="dash-metric-card">
-                    <span class="dash-metric-label">TOTAL MENCIONES</span>
+                    <span class="dash-metric-label">TOTAL MENCIONES COMPETENCIA</span>
                     <span class="dash-metric-value" id="dash-sov-m-total">0</span>
                   </div>
                   <div class="dash-metric-card">
@@ -625,23 +692,22 @@
         <div class="step-label">Exportar</div>
         <h2 class="section-title" id="export-title">Exportar datos</h2>
 
-        <h3 class="config-section-title">Período</h3>
-        <div class="export-period-grid">
-          <div class="field-group">
-            <label>Desde</label>
-            <input type="date" disabled />
-          </div>
-          <div class="field-group">
-            <label>Hasta</label>
-            <input type="date" disabled />
-          </div>
-        </div>
-        <p class="field-hint" style="margin-bottom:4px;">La selección de período estará disponible cuando la app esté conectada a base de datos.</p>
-
         <h3 class="config-section-title">Exportar sesión actual</h3>
+        <p class="field-hint" style="margin-bottom:8px;">Solo se exportan menciones de la sección MARCA.</p>
         <p class="section-desc" style="margin-bottom:10px;">Exportá las menciones de la sesión actual en formato Excel con todos los campos clasificados.</p>
         <p class="field-hint" style="margin-bottom:16px;">Campos incluidos: Fecha · Título · Link · Medio · País · Sentimiento · Tipo de nota · Vocero · Visibilidad · Alcance · Interacciones · Publicidad</p>
-        <button class="btn btn-primary" onclick="exportToExcel()">↓ Exportar Excel</button>
+        <button class="btn btn-primary" onclick="exportToExcel()">↓ Exportar sesión actual</button>
+
+        <h3 class="config-section-title" style="margin-top:32px;">Exportar menciones guardadas</h3>
+        <p class="field-hint" style="margin-bottom:8px;">Solo se exportan menciones de la sección MARCA.</p>
+        <p class="section-desc" style="margin-bottom:10px;">Exportá las menciones de un guardado anterior en formato Excel con todos los campos clasificados.</p>
+        <p class="field-hint" style="margin-bottom:16px;">Campos incluidos: Fecha · Título · Link · Medio · País · Sentimiento · Tipo de nota · Vocero · Visibilidad · Alcance · Interacciones · Publicidad</p>
+        <div class="field-group" style="margin-bottom:16px;max-width:480px;">
+          <select id="export-saved-select" class="sidebar-brand-select" onchange="onExportSavedSelectChange()">
+            <option value="">No hay menciones guardadas para esta marca</option>
+          </select>
+        </div>
+        <button class="btn" id="export-saved-btn" onclick="exportSavedEntry()" style="background:#1a73e8;color:#fff;border-color:#1a73e8;" disabled>↓ Exportar datos guardados</button>
       </div>
     </main><!-- /screen-export -->
 

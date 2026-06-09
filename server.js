@@ -469,6 +469,62 @@ app.post('/api/pdf', async (req, res) => {
   }
 });
 
+// Endpoint: enviar dashboard por email (con adjunto HTML interactivo)
+app.get('/api/dashboard-logo', (req, res) => {
+  const logoBase64 = getLogoBase64();
+  res.json({ logoBase64: logoBase64 || null });
+});
+
+app.post('/api/send-dashboard', async (req, res) => {
+  const { htmlBody, htmlAttachment, attachmentName, recipients, subject, smtpConfig, scheduledAt } = req.body;
+
+  if (!recipients || !smtpConfig || !smtpConfig.host || !smtpConfig.user || !smtpConfig.pass) {
+    return res.status(400).json({ error: 'Faltan datos requeridos (destinatarios o configuración SMTP).' });
+  }
+
+  const emailSubject = subject || '[Dashboard] Clipping de Medios';
+
+  const doSend = async () => {
+    const transporter = nodemailer.createTransport({
+      host: smtpConfig.host,
+      port: parseInt(smtpConfig.port) || 587,
+      secure: smtpConfig.port == 465,
+      auth: { user: smtpConfig.user, pass: smtpConfig.pass }
+    });
+    const attachments = htmlAttachment ? [{
+      filename: attachmentName || 'Dashboard.html',
+      content: Buffer.from(htmlAttachment, 'base64'),
+      contentType: 'text/html'
+    }] : [];
+    await transporter.sendMail({
+      from: `"Milenium Group Clipping" <${smtpConfig.user}>`,
+      to: recipients,
+      subject: emailSubject,
+      html: htmlBody || '',
+      attachments
+    });
+  };
+
+  if (scheduledAt) {
+    const sendDate = new Date(scheduledAt);
+    if (isNaN(sendDate.getTime()) || sendDate <= new Date()) {
+      return res.status(400).json({ error: 'La fecha de programación debe ser futura.' });
+    }
+    schedule.scheduleJob(sendDate, async () => {
+      try { await doSend(); console.log(`[dashboard] Enviado programado: ${sendDate.toISOString()}`); }
+      catch (err) { console.error(`[dashboard] Error envío programado: ${err.message}`); }
+    });
+    return res.json({ ok: true, message: `Envío programado para ${sendDate.toLocaleString('es-AR')}` });
+  }
+
+  try {
+    await doSend();
+    res.json({ ok: true, message: 'Dashboard enviado correctamente con adjunto HTML interactivo.' });
+  } catch (err) {
+    res.status(500).json({ error: `Error al enviar: ${err.message}` });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`\n✅ Clipping Milenium corriendo en http://localhost:${PORT}\n`);
 });
