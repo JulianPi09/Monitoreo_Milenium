@@ -1788,6 +1788,15 @@ const _dashCharts = {};
 const _MESES_ES = { enero:1, febrero:2, marzo:3, abril:4, mayo:5, junio:6,
                     julio:7, agosto:8, septiembre:9, octubre:10, noviembre:11, diciembre:12 };
 
+const _MESES_SHORT = { enero:'ENE', febrero:'FEB', marzo:'MAR', abril:'ABR', mayo:'MAY', junio:'JUN',
+                       julio:'JUL', agosto:'AGO', septiembre:'SEP', octubre:'OCT', noviembre:'NOV', diciembre:'DIC' };
+
+function _shortDayLabel(str) {
+  const m = String(str).match(/(\d{1,2})\s+de\s+(\w+)\s+de\s+\d{4}/i);
+  if (!m) return str;
+  return `${m[1].padStart(2, '0')} ${_MESES_SHORT[m[2].toLowerCase()] || m[2].toUpperCase().slice(0, 3)}`;
+}
+
 // Plugin para mostrar % dentro de segmentos de torta (solo si > 5%)
 const _piePercentPlugin = {
   id: 'piePercent',
@@ -1811,6 +1820,31 @@ const _piePercentPlugin = {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(`${Math.round(pct)}%`, x, y);
+        ctx.restore();
+      });
+    });
+  }
+};
+
+// Plugin para mostrar % dentro de segmentos de barras apiladas (solo si > 5%)
+const _stackedBarPercentPlugin = {
+  id: 'stackedBarPercent',
+  afterDatasetDraw(chart) {
+    const { ctx } = chart;
+    chart.data.datasets.forEach((dataset, di) => {
+      const meta = chart.getDatasetMeta(di);
+      if (meta.hidden) return;
+      meta.data.forEach((bar, i) => {
+        const val = Number(dataset.data[i]) || 0;
+        if (val <= 5) return;
+        const segWidth = Math.abs(bar.x - bar.base);
+        if (segWidth < 22) return;
+        ctx.save();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${Math.round(val)}%`, (bar.x + bar.base) / 2, bar.y);
         ctx.restore();
       });
     });
@@ -2038,7 +2072,7 @@ function _renderTimeline(bm) {
           tooltip: { callbacks: { title: i => i[0].label, label: ctx => ` ${ctx.dataset.label}: ${Number(ctx.raw).toLocaleString('es-AR')}` } }
         },
         scales: {
-          x: { grid: { color: '#F0F0F0' }, ticks: { font: { size: 11 } } },
+          x: { grid: { color: '#F0F0F0' }, ticks: { font: { size: 11 }, maxTicksLimit: 8, autoSkip: true, maxRotation: 0, callback: function(val) { return _shortDayLabel(this.getLabelForValue(val)); } } },
           y: { grid: { color: '#F0F0F0' }, beginAtZero: true, ticks: { font: { size: 11 }, precision: 0 } }
         }
       }
@@ -2172,6 +2206,7 @@ function _renderSOVSentimentBar(brandName, bm, compGroups) {
     document.getElementById('dash-chart-sov-sentiment').getContext('2d'),
     {
       type: 'bar',
+      plugins: [_stackedBarPercentPlugin],
       data: {
         labels: sentData.map(d => d.name),
         datasets: [
@@ -2273,7 +2308,7 @@ function _renderSOVTimeline(cm) {
           tooltip: { callbacks: { title: i => i[0].label, label: ctx => ` ${ctx.dataset.label}: ${Number(ctx.raw).toLocaleString('es-AR')}` } }
         },
         scales: {
-          x: { grid: { color: '#F0F0F0' }, ticks: { font: { size: 11 } } },
+          x: { grid: { color: '#F0F0F0' }, ticks: { font: { size: 11 }, maxTicksLimit: 8, autoSkip: true, maxRotation: 0, callback: function(val) { return _shortDayLabel(this.getLabelForValue(val)); } } },
           y: { grid: { color: '#F0F0F0' }, beginAtZero: true, ticks: { font: { size: 11 }, precision: 0 } }
         }
       }
