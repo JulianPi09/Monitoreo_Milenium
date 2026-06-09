@@ -40,6 +40,10 @@
       <div class="sidebar-static-value hidden" id="sidebar-brand-static"></div>
     </div>
     <nav class="sidebar-nav">
+      <button class="sidebar-nav-item" id="nav-dashboard" onclick="showScreen('dashboard')">
+        <span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15" fill="currentColor" style="display:block;margin:auto;"><rect x="1" y="8" width="3" height="6" rx="1"/><rect x="6" y="5" width="3" height="9" rx="1"/><rect x="11" y="2" width="3" height="12" rx="1"/></svg></span>
+        <span>Dashboard</span>
+      </button>
       <button class="sidebar-nav-item" id="nav-brand-config" onclick="showScreen('brand-config')">
         <span class="sidebar-icon">⚙</span>
         <span>Configuración de marca</span>
@@ -52,8 +56,12 @@
         <span class="sidebar-icon">↓</span>
         <span>Exportar datos</span>
       </button>
+      <button class="sidebar-nav-item" id="nav-saved" onclick="showScreen('saved')">
+        <span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="15" viewBox="0 0 12 15" fill="currentColor" style="display:block;margin:auto;"><path d="M1 0h10a1 1 0 011 1v13.27a.5.5 0 01-.78.42L6 11.5l-5.22 3.19A.5.5 0 010 14.27V1a1 1 0 011-1z"/></svg></span>
+        <span>Menciones guardadas</span>
+      </button>
       <button class="sidebar-nav-item" id="nav-history" onclick="showScreen('history')">
-        <span class="sidebar-icon">🕐</span>
+        <span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15" fill="currentColor" style="display:block;margin:auto;"><path fill-rule="evenodd" clip-rule="evenodd" d="M7.5 1.5a6 6 0 100 12 6 6 0 000-12zM0 7.5a7.5 7.5 0 1115 0A7.5 7.5 0 010 7.5zm8.25-3.75v4.06l2.47 1.43-.75 1.3-3-1.73V3.75h1.28z"/></svg></span>
         <span>Historial de reportes</span>
       </button>
     </nav>
@@ -236,7 +244,11 @@
         <div id="mentions-list"></div>
         <div id="pagination"></div>
 
-        <button class="btn btn-primary" id="btn-continue" style="margin-top:16px;">Continuar al envío →</button>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap;">
+          <button class="btn btn-primary" id="btn-continue">Continuar al envío →</button>
+          <button class="btn btn-gray" onclick="openSaveMentionsModal()">Guardar menciones</button>
+          <span class="save-confirm-msg hidden" id="save-confirm-msg">✓ Menciones guardadas</span>
+        </div>
       </section>
 
       <!-- PASO 3: CONFIGURAR Y ENVIAR -->
@@ -305,6 +317,90 @@
       </section>
 
     </main><!-- /screen-report -->
+
+    <!-- SCREEN: DASHBOARD -->
+    <main class="app-main hidden" id="screen-dashboard">
+      <div class="card dash-card">
+
+        <!-- Header ancho completo: título izquierda, fuente de datos derecha -->
+        <div class="dash-header">
+          <h2 class="dash-title" id="dash-title">Dashboard</h2>
+          <div class="dash-source-row">
+            <button class="dash-tab active" id="dash-tab-session" onclick="setDashSource('session')">Sesión actual</button>
+            <button class="dash-tab" id="dash-tab-saved" onclick="setDashSource('saved')">Menciones guardadas</button>
+            <select class="dash-saved-select hidden" id="dash-saved-select" onchange="onDashSavedSelect()">
+              <option value="">Seleccionar guardado...</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Sin datos -->
+        <div class="dash-no-data hidden" id="dash-no-data">
+          No hay datos disponibles. Cargá un CSV en el Paso 1 o guardá menciones desde el Paso 2.
+        </div>
+
+        <!-- Contenido con datos -->
+        <div id="dash-content" class="hidden">
+          <h3 class="dash-section-title">MENCIONES DE MARCA</h3>
+          <div class="dash-layout">
+
+            <!-- COLUMNA IZQUIERDA (60%) -->
+            <div class="dash-col-left">
+              <div class="dash-metrics">
+                <div class="dash-metric-card">
+                  <span class="dash-metric-label">TOTAL MENCIONES</span>
+                  <span class="dash-metric-value" id="dash-m-total">0</span>
+                </div>
+                <div class="dash-metric-card">
+                  <span class="dash-metric-label">ALCANCE TOTAL</span>
+                  <span class="dash-metric-value" id="dash-m-reach">0</span>
+                </div>
+                <div class="dash-metric-card">
+                  <span class="dash-metric-label">INTERACCIONES</span>
+                  <span class="dash-metric-value" id="dash-m-engagement">0</span>
+                </div>
+                <div class="dash-metric-card">
+                  <span class="dash-metric-label">AHORRO PUBLICITARIO</span>
+                  <span class="dash-metric-value" id="dash-m-publicity">$0</span>
+                </div>
+              </div>
+              <div class="dash-charts-row">
+                <div class="dash-chart-card">
+                  <p class="dash-chart-title">Distribución de sentimiento</p>
+                  <div class="dash-pie-wrap"><canvas id="dash-chart-sentiment"></canvas></div>
+                </div>
+                <div class="dash-chart-card">
+                  <p class="dash-chart-title">Distribución de tipo de nota</p>
+                  <div class="dash-pie-wrap"><canvas id="dash-chart-notetype"></canvas></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- COLUMNA DERECHA (40%) -->
+            <div class="dash-col-right hidden" id="dash-col-right">
+              <div class="dash-chart-card">
+                <div class="dash-tl-header">
+                  <p class="dash-chart-title" style="margin:0;">Evolución temporal</p>
+                  <div class="dash-tl-toggle">
+                    <button class="dash-tl-btn active" id="dash-tl-results" onclick="setDashTimelineMetric('results')">Resultados</button>
+                    <button class="dash-tl-btn" id="dash-tl-engagement" onclick="setDashTimelineMetric('engagement')">Interacciones</button>
+                    <button class="dash-tl-btn" id="dash-tl-reach" onclick="setDashTimelineMetric('reach')">Alcance</button>
+                  </div>
+                </div>
+                <canvas id="dash-chart-timeline"></canvas>
+              </div>
+              <div class="dash-chart-card">
+                <p class="dash-chart-title">Voceros mencionados</p>
+                <p class="dash-no-voceros hidden" id="dash-no-voceros">No se detectaron voceros en estas menciones.</p>
+                <canvas id="dash-chart-voceros" class="hidden"></canvas>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </main><!-- /screen-dashboard -->
 
     <!-- SCREEN: CONFIGURACIÓN DE MARCA -->
     <main class="app-main hidden" id="screen-brand-config">
@@ -494,6 +590,29 @@
       </div>
     </main><!-- /screen-export -->
 
+    <!-- SCREEN: MENCIONES GUARDADAS -->
+    <main class="app-main hidden" id="screen-saved">
+      <div class="card">
+        <div class="step-label">Guardadas</div>
+        <h2 class="section-title" id="saved-title">Menciones guardadas</h2>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Menciones</th>
+              <th>Fecha de guardado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="saved-table-body">
+            <tr>
+              <td colspan="4" class="table-empty">Aún no hay menciones guardadas para esta marca</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main><!-- /screen-saved -->
+
     <!-- SCREEN: HISTORIAL DE REPORTES -->
     <main class="app-main hidden" id="screen-history">
       <div class="card">
@@ -542,6 +661,27 @@
     </div>
   </div>
 
+  <!-- MODAL GUARDAR MENCIONES -->
+  <div id="save-mentions-modal" class="modal hidden">
+    <div class="modal-overlay" onclick="closeSaveMentionsModal()"></div>
+    <div class="modal-content modal-content-sm">
+      <div class="modal-header">
+        <span>Guardar menciones</span>
+        <button class="modal-close" onclick="closeSaveMentionsModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field-group">
+          <label for="save-mentions-name">Nombre del guardado</label>
+          <input type="text" id="save-mentions-name" placeholder="Nombre..." />
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px;">
+          <button class="btn btn-primary" onclick="confirmSaveMentions()">Guardar</button>
+          <button class="btn btn-outline" onclick="closeSaveMentionsModal()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- DIÁLOGO DE CONFIRMACIÓN: NUEVO REPORTE -->
   <div id="new-report-confirm" class="confirm-overlay hidden">
     <div class="confirm-overlay-bg" onclick="closeNewReportConfirm()"></div>
@@ -566,6 +706,7 @@
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="app.js"></script>
 </body>
