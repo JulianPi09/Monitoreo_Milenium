@@ -232,7 +232,7 @@ function buildEmailHTML(mentions, title, brandLogo, brandTags) {
     : '';
 
   const mileniumLogoHTML = logoSrc
-    ? `<img src="${logoSrc}" alt="Milenium Group" style="height:42px;display:block;" />`
+    ? `<img src="${logoSrc}" alt="Milenium Group" style="height:42px;width:auto;display:block;" />`
     : `<p style="color:#FFFFFF;font-family:'Oswald',sans-serif;font-size:22px;font-weight:600;margin:0;">MILENIUM GROUP</p>`;
 
   const headerHTML = brandLogo

@@ -2626,7 +2626,7 @@ function _buildDashboardEmailHTML() {
 
   const logoSrc = _dashLogoBase64 ? `data:image/png;base64,${_dashLogoBase64}` : '';
   const mileniumLogoHTML = logoSrc
-    ? `<img src="${logoSrc}" alt="Milenium Group" style="height:42px;display:block;" />`
+    ? `<img src="${logoSrc}" alt="Milenium Group" style="height:42px;width:auto;display:block;" />`
     : `<p style="color:#FFFFFF;font-family:'Oswald',sans-serif;font-size:22px;font-weight:600;margin:0;">MILENIUM GROUP</p>`;
   const headerInner = brandLogo
     ? `<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="left" valign="middle">${mileniumLogoHTML}</td><td align="right" valign="middle"><img src="${brandLogo}" alt="${escapeHTML(brandName)}" style="height:42px;width:auto;display:block;margin-left:auto;" /></td></tr></table>`
