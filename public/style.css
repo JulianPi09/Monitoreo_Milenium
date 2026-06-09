@@ -1598,12 +1598,27 @@ textarea:disabled {
   margin: 0 0 20px 0;
 }
 
+.dash-section-title--sov {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid #E0E0E0;
+}
+
+.dash-no-comp {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #888888;
+  padding: 16px 0 24px;
+}
+
 .dash-metrics {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 24px;
 }
+
+.dash-metrics-3 { grid-template-columns: repeat(3, 1fr); }
 
 .dash-metric-card {
   background: #FFFFFF;
@@ -1712,6 +1727,6 @@ textarea:disabled {
   .dash-layout { flex-direction: column; }
   .dash-col-left { flex: 0 0 100%; }
   .dash-col-right { flex: 0 0 100%; }
-  .dash-metrics { grid-template-columns: repeat(2, 1fr); }
+  .dash-metrics, .dash-metrics-3 { grid-template-columns: repeat(2, 1fr); }
   .dash-charts-row { grid-template-columns: 1fr; }
 }

@@ -397,6 +397,61 @@
             </div>
 
           </div>
+
+          <!-- ===== SHARE OF VOICE ===== -->
+          <h3 class="dash-section-title dash-section-title--sov">SHARE OF VOICE</h3>
+          <div class="dash-no-comp hidden" id="dash-no-comp">
+            Configurá etiquetas de competencia en Configuración de marca para ver el Share of Voice.
+          </div>
+          <div id="dash-sov-content" class="hidden">
+            <div class="dash-layout">
+
+              <!-- COLUMNA IZQUIERDA SOV (60%) -->
+              <div class="dash-col-left">
+                <div class="dash-metrics dash-metrics-3">
+                  <div class="dash-metric-card">
+                    <span class="dash-metric-label">TOTAL MENCIONES</span>
+                    <span class="dash-metric-value" id="dash-sov-m-total">0</span>
+                  </div>
+                  <div class="dash-metric-card">
+                    <span class="dash-metric-label">ALCANCE TOTAL</span>
+                    <span class="dash-metric-value" id="dash-sov-m-reach">0</span>
+                  </div>
+                  <div class="dash-metric-card">
+                    <span class="dash-metric-label">INTERACCIONES</span>
+                    <span class="dash-metric-value" id="dash-sov-m-engagement">0</span>
+                  </div>
+                </div>
+                <div class="dash-charts-row">
+                  <div class="dash-chart-card">
+                    <p class="dash-chart-title">Sentimiento por competidor</p>
+                    <canvas id="dash-chart-sov-sentiment"></canvas>
+                  </div>
+                  <div class="dash-chart-card">
+                    <p class="dash-chart-title">Share of Voice</p>
+                    <div class="dash-pie-wrap"><canvas id="dash-chart-sov-pie"></canvas></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- COLUMNA DERECHA SOV (40%) -->
+              <div class="dash-col-right hidden" id="dash-sov-col-right">
+                <div class="dash-chart-card">
+                  <div class="dash-tl-header">
+                    <p class="dash-chart-title" style="margin:0;">Evolución temporal</p>
+                    <div class="dash-tl-toggle">
+                      <button class="dash-tl-btn active" id="dash-sov-tl-results" onclick="setDashSOVMetric('results')">Resultados</button>
+                      <button class="dash-tl-btn" id="dash-sov-tl-engagement" onclick="setDashSOVMetric('engagement')">Interacciones</button>
+                      <button class="dash-tl-btn" id="dash-sov-tl-reach" onclick="setDashSOVMetric('reach')">Alcance</button>
+                    </div>
+                  </div>
+                  <canvas id="dash-chart-sov-timeline"></canvas>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
         </div>
 
       </div>

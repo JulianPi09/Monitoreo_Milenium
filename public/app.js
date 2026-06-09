@@ -1788,6 +1788,40 @@ const _dashCharts = {};
 const _MESES_ES = { enero:1, febrero:2, marzo:3, abril:4, mayo:5, junio:6,
                     julio:7, agosto:8, septiembre:9, octubre:10, noviembre:11, diciembre:12 };
 
+// Plugin para mostrar % dentro de segmentos de torta (solo si > 5%)
+const _piePercentPlugin = {
+  id: 'piePercent',
+  afterDatasetDraw(chart) {
+    const { ctx } = chart;
+    chart.data.datasets.forEach((dataset, di) => {
+      const meta = chart.getDatasetMeta(di);
+      const total = dataset.data.reduce((s, v) => s + (Number(v) || 0), 0);
+      if (!total) return;
+      meta.data.forEach((arc, i) => {
+        const val = Number(dataset.data[i]) || 0;
+        const pct = (val / total) * 100;
+        if (pct <= 5) return;
+        const mid = (arc.startAngle + arc.endAngle) / 2;
+        const r = (arc.innerRadius + arc.outerRadius) / 2;
+        const x = arc.x + r * Math.cos(mid);
+        const y = arc.y + r * Math.sin(mid);
+        ctx.save();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 12px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${Math.round(pct)}%`, x, y);
+        ctx.restore();
+      });
+    });
+  }
+};
+
+function _extractEntityName(tag) {
+  const parts = String(tag).split('/');
+  return parts[parts.length - 1].trim();
+}
+
 function _parseEsDate(str) {
   const m = String(str).match(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i);
   if (!m) return new Date(0);
@@ -1858,6 +1892,17 @@ function _getDashData() {
   return entry ? _getBrandMentions(entry.menciones) : null;
 }
 
+function _getDashRawData() {
+  if (_dashSource === 'session') {
+    return mentions.length ? mentions : null;
+  }
+  if (!_dashSavedId) return null;
+  const entry = getSavedMentions().find(e => e.id === _dashSavedId);
+  return entry ? entry.menciones : null;
+}
+
+let _dashSOVMetric = 'results';
+
 function _destroyChart(key) {
   if (_dashCharts[key]) { _dashCharts[key].destroy(); delete _dashCharts[key]; }
 }
@@ -1868,25 +1913,27 @@ function loadDashboardScreen() {
 }
 
 function _renderDashboard() {
-  const data = _getDashData();
+  const raw = _getDashRawData();
   const noData = document.getElementById('dash-no-data');
   const content = document.getElementById('dash-content');
   const rightCol = document.getElementById('dash-col-right');
-  if (!data || data.length === 0) {
+  if (!raw || raw.length === 0) {
     noData.classList.remove('hidden');
     content.classList.add('hidden');
     if (rightCol) rightCol.classList.add('hidden');
-    ['sentiment', 'notetype', 'timeline', 'voceros'].forEach(k => _destroyChart(k));
+    ['sentiment', 'notetype', 'timeline', 'voceros', 'sov-sentiment', 'sov-pie', 'sov-timeline'].forEach(k => _destroyChart(k));
     return;
   }
+  const bm = _getBrandMentions(raw);
   noData.classList.add('hidden');
   content.classList.remove('hidden');
   if (rightCol) rightCol.classList.remove('hidden');
-  _renderMetrics(data);
-  _renderSentiment(data);
-  _renderNoteType(data);
-  _renderTimeline(data);
-  _renderVoceros(data);
+  _renderMetrics(bm);
+  _renderSentiment(bm);
+  _renderNoteType(bm);
+  _renderTimeline(bm);
+  _renderVoceros(bm);
+  _renderSOV(raw);
 }
 
 function _renderMetrics(bm) {
@@ -1911,6 +1958,7 @@ function _renderSentiment(bm) {
     document.getElementById('dash-chart-sentiment').getContext('2d'),
     {
       type: 'pie',
+      plugins: [_piePercentPlugin],
       data: {
         labels: ['Positivas', 'Neutrales', 'Negativas'],
         datasets: [{ data: [pos, neu, neg], backgroundColor: ['#28a745', '#F5A623', '#FF0B2E'], borderWidth: 2, borderColor: '#fff' }]
@@ -1936,6 +1984,7 @@ function _renderNoteType(bm) {
     document.getElementById('dash-chart-notetype').getContext('2d'),
     {
       type: 'pie',
+      plugins: [_piePercentPlugin],
       data: {
         labels: ['Espontánea', 'Proactiva', 'Reactiva'],
         datasets: [{ data: [esp, pro, rea], backgroundColor: ['#1a73e8', '#7b2d8b', '#17a2b8'], borderWidth: 2, borderColor: '#fff' }]
@@ -2038,4 +2087,196 @@ function _renderVoceros(bm) {
       }
     }
   });
+}
+
+// ===== SHARE OF VOICE =====
+
+function setDashSOVMetric(metric) {
+  _dashSOVMetric = metric;
+  ['results', 'engagement', 'reach'].forEach(m => {
+    const el = document.getElementById(`dash-sov-tl-${m}`);
+    if (el) el.classList.toggle('active', metric === m);
+  });
+  const raw = _getDashRawData();
+  if (!raw) return;
+  const brandConfig = getActiveBrandTags();
+  const compMentions = raw.filter(m => getMentionSection(m, brandConfig) === 'comp');
+  if (compMentions.length) _renderSOVTimeline(compMentions);
+}
+
+function _renderSOV(raw) {
+  const brandConfig = getActiveBrandTags();
+  const compTagList = parseTagList(brandConfig && brandConfig.comp);
+  const noCompEl = document.getElementById('dash-no-comp');
+  const sovContent = document.getElementById('dash-sov-content');
+  const sovRightCol = document.getElementById('dash-sov-col-right');
+
+  if (!compTagList.length) {
+    noCompEl.classList.remove('hidden');
+    sovContent.classList.add('hidden');
+    ['sov-sentiment', 'sov-pie', 'sov-timeline'].forEach(k => _destroyChart(k));
+    return;
+  }
+
+  const bm = _getBrandMentions(raw);
+  const brandTags = parseTagList(brandConfig && brandConfig.brand);
+  const brandName = brandTags.length ? _extractEntityName(brandTags[0]) : 'Marca';
+
+  const compGroups = {};
+  compTagList.forEach(ct => {
+    const name = _extractEntityName(ct);
+    const mTags_lower = ct.toLowerCase();
+    if (!compGroups[name]) compGroups[name] = [];
+    raw.forEach(m => {
+      const mTags = parseTagList(m.tagsCustomer || '');
+      if (mTags.some(t => t.toLowerCase() === mTags_lower)) compGroups[name].push(m);
+    });
+  });
+
+  const compMentions = raw.filter(m => getMentionSection(m, brandConfig) === 'comp');
+
+  noCompEl.classList.add('hidden');
+  sovContent.classList.remove('hidden');
+  if (sovRightCol) sovRightCol.classList.remove('hidden');
+
+  _renderSOVMetrics(compMentions);
+  _renderSOVSentimentBar(brandName, bm, compGroups);
+  _renderSOVPie(brandName, bm, compGroups);
+  _renderSOVTimeline(compMentions);
+}
+
+function _renderSOVMetrics(cm) {
+  const reach = cm.reduce((s, m) => s + (m.reach != null ? Number(m.reach) : 0), 0);
+  const eng   = cm.reduce((s, m) => s + (m.engagement != null ? Number(m.engagement) : 0), 0);
+  document.getElementById('dash-sov-m-total').textContent      = cm.length.toLocaleString('es-AR');
+  document.getElementById('dash-sov-m-reach').textContent      = reach.toLocaleString('es-AR');
+  document.getElementById('dash-sov-m-engagement').textContent = eng.toLocaleString('es-AR');
+}
+
+function _renderSOVSentimentBar(brandName, bm, compGroups) {
+  const entities = [
+    { name: brandName, mentions: bm },
+    ...Object.entries(compGroups).map(([name, mentions]) => ({ name, mentions }))
+  ];
+  const sentData = entities.map(({ name, mentions: ms }) => {
+    const pos = ms.filter(m => m.sentiment === 'positive').length;
+    const neu = ms.filter(m => m.sentiment === 'neutral').length;
+    const neg = ms.filter(m => m.sentiment === 'negative').length;
+    const tot = pos + neu + neg || 1;
+    const pPos = Math.round(pos / tot * 100);
+    const pNeu = Math.round(neu / tot * 100);
+    return { name, pos: pPos, neu: pNeu, neg: 100 - pPos - pNeu };
+  });
+  _destroyChart('sov-sentiment');
+  _dashCharts['sov-sentiment'] = new Chart(
+    document.getElementById('dash-chart-sov-sentiment').getContext('2d'),
+    {
+      type: 'bar',
+      data: {
+        labels: sentData.map(d => d.name),
+        datasets: [
+          { label: 'Positivo',  data: sentData.map(d => d.pos), backgroundColor: '#28a745', borderWidth: 0 },
+          { label: 'Neutral',   data: sentData.map(d => d.neu), backgroundColor: '#F5A623', borderWidth: 0 },
+          { label: 'Negativo',  data: sentData.map(d => d.neg), backgroundColor: '#FF0B2E', borderWidth: 0 }
+        ]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        scales: {
+          x: { stacked: true, max: 100, grid: { color: '#F0F0F0' }, ticks: { callback: v => `${v}%`, font: { size: 11 } } },
+          y: { stacked: true, grid: { display: false }, ticks: { font: { size: 12 } } }
+        },
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            mode: 'index',
+            callbacks: {
+              title: items => items[0]?.label || '',
+              label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%`
+            }
+          }
+        }
+      }
+    }
+  );
+}
+
+function _renderSOVPie(brandName, bm, compGroups) {
+  const entities = [
+    { name: brandName, count: bm.length },
+    ...Object.entries(compGroups).map(([name, ms]) => ({ name, count: ms.length }))
+  ];
+  const total = entities.reduce((s, e) => s + e.count, 0) || 1;
+  const colors = ['#1a73e8', '#FF0B2E', '#28a745', '#F5A623', '#7b2d8b', '#17a2b8', '#fd7e14', '#20c997'];
+  _destroyChart('sov-pie');
+  _dashCharts['sov-pie'] = new Chart(
+    document.getElementById('dash-chart-sov-pie').getContext('2d'),
+    {
+      type: 'pie',
+      plugins: [_piePercentPlugin],
+      data: {
+        labels: entities.map(e => e.name),
+        datasets: [{
+          data: entities.map(e => e.count),
+          backgroundColor: entities.map((_, i) => colors[i % colors.length]),
+          borderWidth: 2,
+          borderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} menciones (${((ctx.raw / total) * 100).toFixed(1)}%)` } }
+        }
+      }
+    }
+  );
+}
+
+function _renderSOVTimeline(cm) {
+  const metric = _dashSOVMetric;
+  const byDay = {};
+  cm.forEach(m => {
+    const day = m.date ? _dayLabel(m.date) : 'Sin fecha';
+    if (metric === 'results') {
+      byDay[day] = (byDay[day] || 0) + 1;
+    } else {
+      byDay[day] = (byDay[day] || 0) + (m[metric] != null ? Number(m[metric]) : 0);
+    }
+  });
+  const days = Object.keys(byDay).sort((a, b) => _parseEsDate(a) - _parseEsDate(b));
+  const label = metric === 'results' ? 'Menciones' : (metric === 'engagement' ? 'Interacciones' : 'Alcance');
+  _destroyChart('sov-timeline');
+  _dashCharts['sov-timeline'] = new Chart(
+    document.getElementById('dash-chart-sov-timeline').getContext('2d'),
+    {
+      type: 'line',
+      data: {
+        labels: days,
+        datasets: [{
+          label,
+          data: days.map(d => byDay[d]),
+          borderColor: '#1a73e8',
+          backgroundColor: 'rgba(26,115,232,0.07)',
+          pointBackgroundColor: '#1a73e8',
+          pointRadius: 4,
+          tension: 0.3,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { title: i => i[0].label, label: ctx => ` ${ctx.dataset.label}: ${Number(ctx.raw).toLocaleString('es-AR')}` } }
+        },
+        scales: {
+          x: { grid: { color: '#F0F0F0' }, ticks: { font: { size: 11 } } },
+          y: { grid: { color: '#F0F0F0' }, beginAtZero: true, ticks: { font: { size: 11 }, precision: 0 } }
+        }
+      }
+    }
+  );
 }
