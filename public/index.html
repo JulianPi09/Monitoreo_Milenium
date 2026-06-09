@@ -66,7 +66,7 @@
       </button>
       <button class="sidebar-nav-item" id="nav-history" onclick="showScreen('history')">
         <span class="sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15" fill="currentColor" style="display:block;margin:auto;"><path fill-rule="evenodd" clip-rule="evenodd" d="M7.5 1.5a6 6 0 100 12 6 6 0 000-12zM0 7.5a7.5 7.5 0 1115 0A7.5 7.5 0 010 7.5zm8.25-3.75v4.06l2.47 1.43-.75 1.3-3-1.73V3.75h1.28z"/></svg></span>
-        <span>Historial de reportes</span>
+        <span>Historial de envíos</span>
       </button>
     </nav>
     <div class="sidebar-footer">
@@ -738,18 +738,19 @@
     <main class="app-main hidden" id="screen-history">
       <div class="card">
         <div class="step-label">Historial</div>
-        <h2 class="section-title" id="history-title">Historial de reportes</h2>
+        <h2 class="section-title" id="history-title">Historial de envíos</h2>
         <table class="data-table">
           <thead>
             <tr>
               <th>Fecha de envío</th>
+              <th>Tipo</th>
               <th>Menciones</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody id="history-table-body">
             <tr>
-              <td colspan="3" class="table-empty">Aún no hay reportes enviados para esta marca</td>
+              <td colspan="4" class="table-empty">Aún no hay envíos registrados para esta marca</td>
             </tr>
           </tbody>
         </table>
