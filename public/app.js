@@ -978,12 +978,12 @@ function escapeHTML(str) {
 // ===== NAVEGACIÓN DE PANTALLAS =====
 
 function showScreen(screen) {
-  ['step0', 'report', 'brand-config', 'mailing', 'export', 'saved', 'history'].forEach(s => {
+  ['step0', 'report', 'dashboard', 'brand-config', 'mailing', 'export', 'saved', 'history'].forEach(s => {
     const el = document.getElementById(`screen-${s}`);
     if (el) el.classList.toggle('hidden', s !== screen);
   });
 
-  ['brand-config', 'mailing', 'export', 'saved', 'history'].forEach(s => {
+  ['dashboard', 'brand-config', 'mailing', 'export', 'saved', 'history'].forEach(s => {
     const el = document.getElementById(`nav-${s}`);
     if (el) el.classList.toggle('active', s === screen);
   });
@@ -994,6 +994,7 @@ function showScreen(screen) {
   const backBtn = document.getElementById('btn-back-to-report');
   if (backBtn) backBtn.classList.toggle('hidden', screen === 'report' || screen === 'step0');
 
+  if (screen === 'dashboard') loadDashboardScreen();
   if (screen === 'brand-config') loadBrandConfigScreen();
   if (screen === 'mailing') loadMailingScreen();
   if (screen === 'saved') loadSavedMentionsScreen();
@@ -1095,6 +1096,7 @@ function onCountryChange() {
   if (!document.getElementById('screen-mailing').classList.contains('hidden')) loadMailingScreen();
   if (!document.getElementById('screen-saved').classList.contains('hidden')) loadSavedMentionsScreen();
   if (!document.getElementById('screen-history').classList.contains('hidden')) loadHistoryScreen();
+  if (!document.getElementById('screen-dashboard').classList.contains('hidden')) loadDashboardScreen();
 }
 
 function onBrandChange() {
@@ -1103,6 +1105,7 @@ function onBrandChange() {
   if (!document.getElementById('screen-mailing').classList.contains('hidden')) loadMailingScreen();
   if (!document.getElementById('screen-saved').classList.contains('hidden')) loadSavedMentionsScreen();
   if (!document.getElementById('screen-history').classList.contains('hidden')) loadHistoryScreen();
+  if (!document.getElementById('screen-dashboard').classList.contains('hidden')) loadDashboardScreen();
 }
 
 function updateScreenTitles() {
@@ -1119,6 +1122,8 @@ function updateScreenTitles() {
     'export-title':       'Exportar datos',
     'saved-title':        'Menciones guardadas'
   };
+  const dashTitleEl = document.getElementById('dash-title');
+  if (dashTitleEl) dashTitleEl.textContent = brandName ? `Dashboard · ${brandName}` : 'Dashboard';
   Object.entries(screens).forEach(([id, base]) => {
     const el = document.getElementById(id);
     if (el) el.textContent = base + suffix;
@@ -1769,5 +1774,268 @@ function deleteSavedEntry(id) {
   showConfirm(`¿Eliminar "${entry.nombre}"?`, () => {
     persistSavedMentions(getSavedMentions().filter(e => e.id !== id));
     loadSavedMentionsScreen();
+  });
+}
+
+// ===== DASHBOARD =====
+
+let _dashSource = 'session';
+let _dashSavedId = null;
+let _dashTimelineMetric = 'results';
+const _dashCharts = {};
+
+// Mapa de meses en español para parsear fechas del eje X
+const _MESES_ES = { enero:1, febrero:2, marzo:3, abril:4, mayo:5, junio:6,
+                    julio:7, agosto:8, septiembre:9, octubre:10, noviembre:11, diciembre:12 };
+
+function _parseEsDate(str) {
+  const m = String(str).match(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i);
+  if (!m) return new Date(0);
+  return new Date(parseInt(m[3]), (_MESES_ES[m[2].toLowerCase()] || 1) - 1, parseInt(m[1]));
+}
+
+function _dayLabel(dateStr) {
+  // "01 de junio de 2026, 10:00" → "01 de junio de 2026"
+  const m = String(dateStr).match(/(\d{1,2}\s+de\s+\w+\s+de\s+\d{4})/i);
+  return m ? m[1] : String(dateStr).split(',')[0].trim();
+}
+
+function _getBrandMentions(allMentions) {
+  const brandConfig = getActiveBrandTags();
+  const brandList = parseTagList(brandConfig && brandConfig.brand);
+  if (!brandList.length) return allMentions;
+  return allMentions.filter(m => mentionMatchesAnyTag(parseTagList(m.tagsCustomer), brandList));
+}
+
+function setDashSource(source) {
+  _dashSource = source;
+  document.getElementById('dash-tab-session').classList.toggle('active', source === 'session');
+  document.getElementById('dash-tab-saved').classList.toggle('active', source === 'saved');
+  const sel = document.getElementById('dash-saved-select');
+  if (source === 'saved') {
+    _populateDashSavedSelect();
+    sel.classList.remove('hidden');
+  } else {
+    sel.classList.add('hidden');
+    _dashSavedId = null;
+  }
+  _renderDashboard();
+}
+
+function _populateDashSavedSelect() {
+  const sel = document.getElementById('dash-saved-select');
+  const entries = getSavedMentions();
+  if (!entries.length) {
+    sel.innerHTML = '<option value="">No hay guardados para esta marca</option>';
+    _dashSavedId = null;
+    return;
+  }
+  sel.innerHTML = '<option value="">Seleccionar guardado...</option>' +
+    entries.map(e => `<option value="${e.id}"${_dashSavedId === e.id ? ' selected' : ''}>${escapeHTML(e.nombre)}</option>`).join('');
+  if (_dashSavedId && !entries.find(e => e.id === _dashSavedId)) _dashSavedId = null;
+}
+
+function onDashSavedSelect() {
+  _dashSavedId = document.getElementById('dash-saved-select').value || null;
+  _renderDashboard();
+}
+
+function setDashTimelineMetric(metric) {
+  _dashTimelineMetric = metric;
+  document.getElementById('dash-tl-results').classList.toggle('active', metric === 'results');
+  document.getElementById('dash-tl-engagement').classList.toggle('active', metric === 'engagement');
+  document.getElementById('dash-tl-reach').classList.toggle('active', metric === 'reach');
+  const data = _getDashData();
+  if (data) _renderTimeline(data);
+}
+
+function _getDashData() {
+  if (_dashSource === 'session') {
+    return mentions.length ? _getBrandMentions(mentions) : null;
+  }
+  if (!_dashSavedId) return null;
+  const entry = getSavedMentions().find(e => e.id === _dashSavedId);
+  return entry ? _getBrandMentions(entry.menciones) : null;
+}
+
+function _destroyChart(key) {
+  if (_dashCharts[key]) { _dashCharts[key].destroy(); delete _dashCharts[key]; }
+}
+
+function loadDashboardScreen() {
+  if (_dashSource === 'saved') _populateDashSavedSelect();
+  _renderDashboard();
+}
+
+function _renderDashboard() {
+  const data = _getDashData();
+  const noData = document.getElementById('dash-no-data');
+  const content = document.getElementById('dash-content');
+  const rightCol = document.getElementById('dash-col-right');
+  if (!data || data.length === 0) {
+    noData.classList.remove('hidden');
+    content.classList.add('hidden');
+    if (rightCol) rightCol.classList.add('hidden');
+    ['sentiment', 'notetype', 'timeline', 'voceros'].forEach(k => _destroyChart(k));
+    return;
+  }
+  noData.classList.add('hidden');
+  content.classList.remove('hidden');
+  if (rightCol) rightCol.classList.remove('hidden');
+  _renderMetrics(data);
+  _renderSentiment(data);
+  _renderNoteType(data);
+  _renderTimeline(data);
+  _renderVoceros(data);
+}
+
+function _renderMetrics(bm) {
+  const reach = bm.reduce((s, m) => s + (m.reach != null ? Number(m.reach) : 0), 0);
+  const eng   = bm.reduce((s, m) => s + (m.engagement != null ? Number(m.engagement) : 0), 0);
+  const pub   = bm.reduce((s, m) => s + (m.publicity != null ? Number(m.publicity) : 0), 0);
+  document.getElementById('dash-m-total').textContent      = bm.length.toLocaleString('es-AR');
+  document.getElementById('dash-m-reach').textContent      = reach.toLocaleString('es-AR');
+  document.getElementById('dash-m-engagement').textContent = eng.toLocaleString('es-AR');
+  document.getElementById('dash-m-publicity').textContent  = pub > 0
+    ? `$${pub.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : '$0';
+}
+
+function _renderSentiment(bm) {
+  const pos = bm.filter(m => m.sentiment === 'positive').length;
+  const neu = bm.filter(m => m.sentiment === 'neutral').length;
+  const neg = bm.filter(m => m.sentiment === 'negative').length;
+  const tot = pos + neu + neg || 1;
+  _destroyChart('sentiment');
+  _dashCharts.sentiment = new Chart(
+    document.getElementById('dash-chart-sentiment').getContext('2d'),
+    {
+      type: 'pie',
+      data: {
+        labels: ['Positivas', 'Neutrales', 'Negativas'],
+        datasets: [{ data: [pos, neu, neg], backgroundColor: ['#28a745', '#F5A623', '#FF0B2E'], borderWidth: 2, borderColor: '#fff' }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} menciones (${((ctx.raw / tot) * 100).toFixed(1)}%)` } }
+        }
+      }
+    }
+  );
+}
+
+function _renderNoteType(bm) {
+  const esp = bm.filter(m => !m.noteType || m.noteType === 'espontanea').length;
+  const pro = bm.filter(m => m.noteType === 'proactiva').length;
+  const rea = bm.filter(m => m.noteType === 'reactiva').length;
+  const tot = esp + pro + rea || 1;
+  _destroyChart('notetype');
+  _dashCharts.notetype = new Chart(
+    document.getElementById('dash-chart-notetype').getContext('2d'),
+    {
+      type: 'pie',
+      data: {
+        labels: ['Espontánea', 'Proactiva', 'Reactiva'],
+        datasets: [{ data: [esp, pro, rea], backgroundColor: ['#1a73e8', '#7b2d8b', '#17a2b8'], borderWidth: 2, borderColor: '#fff' }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} menciones (${((ctx.raw / tot) * 100).toFixed(1)}%)` } }
+        }
+      }
+    }
+  );
+}
+
+function _renderTimeline(bm) {
+  const metric = _dashTimelineMetric;
+  const byDay = {};
+  bm.forEach(m => {
+    const day = m.date ? _dayLabel(m.date) : 'Sin fecha';
+    if (metric === 'results') {
+      byDay[day] = (byDay[day] || 0) + 1;
+    } else {
+      byDay[day] = (byDay[day] || 0) + (m[metric] != null ? Number(m[metric]) : 0);
+    }
+  });
+  const days = Object.keys(byDay).sort((a, b) => _parseEsDate(a) - _parseEsDate(b));
+  const label = metric === 'results' ? 'Menciones' : (metric === 'engagement' ? 'Interacciones' : 'Alcance');
+  _destroyChart('timeline');
+  _dashCharts.timeline = new Chart(
+    document.getElementById('dash-chart-timeline').getContext('2d'),
+    {
+      type: 'line',
+      data: {
+        labels: days,
+        datasets: [{
+          label,
+          data: days.map(d => byDay[d]),
+          borderColor: '#FF0B2E',
+          backgroundColor: 'rgba(255,11,46,0.07)',
+          pointBackgroundColor: '#FF0B2E',
+          pointRadius: 4,
+          tension: 0.3,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { title: i => i[0].label, label: ctx => ` ${ctx.dataset.label}: ${Number(ctx.raw).toLocaleString('es-AR')}` } }
+        },
+        scales: {
+          x: { grid: { color: '#F0F0F0' }, ticks: { font: { size: 11 } } },
+          y: { grid: { color: '#F0F0F0' }, beginAtZero: true, ticks: { font: { size: 11 }, precision: 0 } }
+        }
+      }
+    }
+  );
+}
+
+function _renderVoceros(bm) {
+  const noVocerosEl = document.getElementById('dash-no-voceros');
+  const canvas = document.getElementById('dash-chart-voceros');
+  _destroyChart('voceros');
+  const counts = {};
+  bm.forEach(m => {
+    const v = (m.vocero || '').trim();
+    if (v) counts[v] = (counts[v] || 0) + 1;
+  });
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (sorted.length === 0) {
+    noVocerosEl.classList.remove('hidden');
+    canvas.classList.add('hidden');
+    return;
+  }
+  noVocerosEl.classList.add('hidden');
+  canvas.classList.remove('hidden');
+  _dashCharts.voceros = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: sorted.map(([name]) => name),
+      datasets: [{
+        data: sorted.map(([, count]) => count),
+        backgroundColor: '#FF0B2E',
+        borderWidth: 0,
+        barThickness: 24
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} menciones` } }
+      },
+      scales: {
+        x: { beginAtZero: true, grid: { color: '#F0F0F0' }, ticks: { precision: 0, font: { size: 11 } } },
+        y: { grid: { display: false }, ticks: { font: { size: 12 } } }
+      }
+    }
   });
 }

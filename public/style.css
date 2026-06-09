@@ -1483,3 +1483,235 @@ textarea:disabled {
   .mentions-toolbar { flex-direction: column; align-items: flex-start; }
   .mention-actions { flex-direction: row; padding: 10px 12px; }
 }
+
+/* ===== DASHBOARD ===== */
+#screen-dashboard {
+  max-width: none;
+  margin: 0;
+  padding: 52px 24px 80px;
+}
+
+.dash-card { background: #FFFFFF; }
+
+.dash-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.dash-col-left {
+  flex: 0 0 60%;
+  min-width: 0;
+}
+
+.dash-col-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dash-col-right .dash-chart-card {
+  margin-bottom: 0;
+}
+
+.dash-no-voceros {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #888888;
+  text-align: center;
+  padding: 24px 0 8px;
+  margin: 0;
+}
+
+.dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.dash-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 26px;
+  font-weight: 600;
+  color: #000000;
+  margin: 0;
+}
+
+.dash-source-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dash-tab {
+  padding: 7px 16px;
+  border-radius: 4px;
+  border: 1.5px solid #CCCCCC;
+  background: #FFFFFF;
+  color: #555555;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.dash-tab.active {
+  background: #1a73e8;
+  color: #FFFFFF;
+  border-color: #1a73e8;
+}
+
+.dash-tab:not(.active):hover { background: #F5F5F5; }
+
+.dash-saved-select {
+  padding: 7px 12px;
+  border: 1.5px solid #CCCCCC;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #333333;
+  background: #FFFFFF;
+  cursor: pointer;
+}
+
+.dash-no-data {
+  padding: 48px 20px;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #888888;
+}
+
+.dash-section-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #000000;
+  letter-spacing: 0.5px;
+  margin: 0 0 20px 0;
+}
+
+.dash-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.dash-metric-card {
+  background: #FFFFFF;
+  border: 1px solid #E0E0E0;
+  border-radius: 8px;
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dash-metric-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #888888;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.dash-metric-value {
+  font-family: 'Oswald', sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  color: #000000;
+  line-height: 1;
+}
+
+.dash-charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+  align-items: stretch;
+}
+
+.dash-charts-row .dash-chart-card {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+
+.dash-charts-row .dash-pie-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dash-chart-card {
+  background: #FFFFFF;
+  border: 1px solid #E0E0E0;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.dash-chart-card:last-child { margin-bottom: 0; }
+
+.dash-chart-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333333;
+  margin: 0 0 16px 0;
+}
+
+.dash-pie-wrap {
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+.dash-tl-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dash-tl-toggle { display: flex; gap: 6px; }
+
+.dash-tl-btn {
+  padding: 5px 14px;
+  border-radius: 4px;
+  border: 1.5px solid #CCCCCC;
+  background: #FFFFFF;
+  color: #888888;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.dash-tl-btn.active {
+  background: #FF0B2E;
+  color: #FFFFFF;
+  border-color: #FF0B2E;
+}
+
+.dash-tl-btn:not(.active):hover { background: #F5F5F5; }
+
+@media (max-width: 900px) {
+  .dash-layout { flex-direction: column; }
+  .dash-col-left { flex: 0 0 100%; }
+  .dash-col-right { flex: 0 0 100%; }
+  .dash-metrics { grid-template-columns: repeat(2, 1fr); }
+  .dash-charts-row { grid-template-columns: 1fr; }
+}
