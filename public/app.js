@@ -1604,8 +1604,9 @@ function getMentionsSectionBreakdown(allMentions) {
 
 function formatMentionsSummary(record) {
   if (!record.menciones) return '—';
-  const { marca = 0, comp = 0 } = record.menciones;
-  return `Marca: ${marca} · Competencia: ${comp}`;
+  const { marca = 0, comp = 0, sector = 0 } = record.menciones;
+  if (record.tipo === 'dashboard') return `Marca: ${marca} · Competencia: ${comp}`;
+  return `Marca: ${marca} · Competencia: ${comp} · Sector: ${sector}`;
 }
 
 function blobToBase64(blob) {
