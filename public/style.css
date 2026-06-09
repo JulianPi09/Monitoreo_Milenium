@@ -1449,6 +1449,10 @@ textarea {
   color: #333333;
 }
 
+.data-table td.col-menciones {
+  min-width: 180px;
+}
+
 .table-empty {
   text-align: center !important;
   color: #AAAAAA !important;

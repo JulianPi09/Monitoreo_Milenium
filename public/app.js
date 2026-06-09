@@ -1605,8 +1605,9 @@ function getMentionsSectionBreakdown(allMentions) {
 function formatMentionsSummary(record) {
   if (!record.menciones) return '—';
   const { marca = 0, comp = 0, sector = 0 } = record.menciones;
-  if (record.tipo === 'dashboard') return `Marca: ${marca} · Competencia: ${comp}`;
-  return `Marca: ${marca} · Competencia: ${comp} · Sector: ${sector}`;
+  const s = '<span style="white-space:nowrap;display:block">';
+  if (record.tipo === 'dashboard') return `${s}Marca: ${marca}</span>${s}Competencia: ${comp}</span>`;
+  return `${s}Marca: ${marca}</span>${s}Competencia: ${comp}</span>${s}Sector: ${sector}</span>`;
 }
 
 function blobToBase64(blob) {
@@ -1679,7 +1680,7 @@ function loadHistoryScreen() {
     <tr>
       <td>${formatDateTimeDMY(record.fecha)}</td>
       <td>${tipoLabel}</td>
-      <td>${formatMentionsSummary(record)}</td>
+      <td class="col-menciones">${formatMentionsSummary(record)}</td>
       <td>
         <div class="mailing-table-actions">
           <button class="btn btn-sm" onclick="showHistoryRecipients('${record.id}')">Ver destinatarios</button>
@@ -1842,10 +1843,14 @@ function loadSavedMentionsScreen() {
     tbody.innerHTML = '<tr><td colspan="4" class="table-empty">Aún no hay menciones guardadas para esta marca</td></tr>';
     return;
   }
-  tbody.innerHTML = entries.map(entry => `
+  const s = '<span style="white-space:nowrap;display:block">';
+  tbody.innerHTML = entries.map(entry => {
+    const bd = getMentionsSectionBreakdown(entry.menciones);
+    const mentionsCell = `${s}Marca: ${bd.marca}</span>${s}Competencia: ${bd.comp}</span>${s}Sector: ${bd.sector}</span>`;
+    return `
     <tr>
       <td>${escapeHTML(entry.nombre)}</td>
-      <td>${entry.totalMenciones}</td>
+      <td class="col-menciones">${mentionsCell}</td>
       <td>${formatDateTimeDMY(entry.fechaGuardado)}</td>
       <td>
         <div class="mailing-table-actions">
@@ -1853,8 +1858,8 @@ function loadSavedMentionsScreen() {
           <button class="btn btn-sm" onclick="deleteSavedEntry('${entry.id}')">Eliminar</button>
         </div>
       </td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 }
 
 function loadSavedEntry(id) {
