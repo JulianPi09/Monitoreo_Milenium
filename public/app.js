@@ -425,24 +425,26 @@ function getDisplayMentions() {
   });
 }
 
-// Habilita o deshabilita los botones de filtro por sección según haya o no etiquetas configuradas para la marca activa
+// Habilita o deshabilita cada botón de filtro por sección de forma independiente,
+// según haya o no etiquetas configuradas para esa sección en la marca activa.
 function refreshFilterSectionButtons() {
   const brandConfig = getActiveBrandTags();
-  const hasAnyTags = parseTagList(brandConfig && brandConfig.brand).length > 0
-                  || parseTagList(brandConfig && brandConfig.comp).length > 0
-                  || parseTagList(brandConfig && brandConfig.sector).length > 0;
+  const hasTag = {
+    marca:  parseTagList(brandConfig && brandConfig.brand).length > 0,
+    comp:   parseTagList(brandConfig && brandConfig.comp).length > 0,
+    sector: parseTagList(brandConfig && brandConfig.sector).length > 0
+  };
+  const hasAnyTags = hasTag.marca || hasTag.comp || hasTag.sector;
 
   ['marca', 'comp', 'sector'].forEach(v => {
-    document.getElementById(`filt-section-${v}`).disabled = !hasAnyTags;
+    const btn = document.getElementById(`filt-section-${v}`);
+    btn.disabled = !hasTag[v];
+    if (!hasTag[v] && filterSections.has(v)) {
+      filterSections.delete(v);
+      btn.classList.remove('filter-active');
+    }
   });
   document.getElementById('filter-section-disabled-hint').classList.toggle('hidden', hasAnyTags);
-
-  if (!hasAnyTags && filterSections.size > 0) {
-    filterSections.clear();
-    ['marca', 'comp', 'sector'].forEach(v =>
-      document.getElementById(`filt-section-${v}`).classList.remove('filter-active')
-    );
-  }
 }
 
 function toggleFilterPanel() {
